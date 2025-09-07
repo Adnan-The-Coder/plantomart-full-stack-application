@@ -27,14 +27,13 @@
     "react-icons": "^5.5.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "3",
+    "@biomejs/biome": "2.0.4",
     "@tailwindcss/postcss": "4.1.4",
     "@types/node": "24.0.4",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
-    "eslint": "9.27.0",
-    "eslint-config-next": "15.3.3",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^3. 4.1",
+    "biome": "^0.3.3",
     "typescript": "5.8.3",
     "wrangler": "4.21.x",
     "postcss": "^8"
@@ -45,7 +44,8 @@
     "check": "npm run build && tsc",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "dev": "next dev",
-    "lint": "next lint",
+    "lint": "biome lint .",
+    "format": "biome format . --write",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "start": "next start"
   }

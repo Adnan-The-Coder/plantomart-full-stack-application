@@ -86,13 +86,13 @@ const SignIn: React.FC<SignInProps> = ({ isOpen, onClose, redirectUrl }) => {
     try {
       // First get the IP address
       const ipResponse = await fetch('https://api.ipify.org?format=json');
-      const ipData = await ipResponse.json();
+      const ipData:any = await ipResponse.json();
       const ip = ipData.ip;
       const IP_INFO_TOKEN = process.env.NEXT_PUBLIC_IP_INFO_TOKEN || 'db04343f368c67'; // Replace with your actual token
       
       // Then get geolocation data
       const geoResponse = await fetch(`https://ipinfo.io/${ip}/json?token=${IP_INFO_TOKEN}`);
-      const geoData = await geoResponse.json();
+      const geoData:any = await geoResponse.json();
       
       return {
         ip,
@@ -140,7 +140,7 @@ const SignIn: React.FC<SignInProps> = ({ isOpen, onClose, redirectUrl }) => {
         });
         let profileData = null;
         if (profileRes.ok) {
-          const profileJson = await profileRes.json();
+          const profileJson:any = await profileRes.json();
           if (profileJson.success && profileJson.data) {
             profileData = profileJson.data;
             // Parse user_login_info if present and is a string
@@ -170,7 +170,7 @@ const SignIn: React.FC<SignInProps> = ({ isOpen, onClose, redirectUrl }) => {
             }),
           });
           if (!createRes.ok) {
-            const err = await createRes.json();
+            const err:any = await createRes.json();
             throw new Error(err.message || 'Failed to create user profile');
           }
         } else {
@@ -200,7 +200,7 @@ const SignIn: React.FC<SignInProps> = ({ isOpen, onClose, redirectUrl }) => {
             body: JSON.stringify(updatePayload),
           });
           if (!updateRes.ok) {
-            const err = await updateRes.json();
+            const err:any = await updateRes.json();
             throw new Error(err.message || 'Failed to update user profile');
           }
         }
