@@ -1,0 +1,52 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cf-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-07-12",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./public"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "ENVIRONMENT": "development"
+  },
+  "d1_databases": [  // Optional: keep dev config here
+    {
+      "binding": "DB",
+      "database_name": "plantomart-db",
+      "database_id": "2517ea88-d3a9-4dd6-b18d-ab8f078148f5",
+      "migrations_dir": "./drizzle"
+    }
+  ],
+  "env": {
+    "production": {
+      "vars": {
+        "ENVIRONMENT": "production"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "plantomart-db",
+          "database_id": "2517ea88-d3a9-4dd6-b18d-ab8f078148f5",
+          "migrations_dir": "./drizzle"
+        }
+      ]
+    },
+    "staging": {
+      "vars": {
+        "ENVIRONMENT": "staging"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "plantomart-db",
+          "database_id": "2517ea88-d3a9-4dd6-b18d-ab8f078148f5",
+          "migrations_dir": "./drizzle"
+        }
+      ]
+    }
+  }
+}
