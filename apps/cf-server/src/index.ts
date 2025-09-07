@@ -50,6 +50,7 @@ app.use('*', cors({
     const allowedOrigins = [
       "http://localhost:3000",
       "https://main-website-plantomart.pages.dev",
+      "https://plantomart-web.plantomart.workers.dev/",
       "https://main-website-seven-alpha.vercel.app"
     ];
     return !origin || allowedOrigins.includes(origin) ? (origin || "*") : "";

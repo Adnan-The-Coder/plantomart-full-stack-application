@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Workers
+name: Automated Deployment of cf-server to Cloudflare Workers
 
 on:
   push:
