@@ -1,5 +1,5 @@
 {
-  "name": "zero-day-codebase",
+  "name": "plantomart-main-codebase",
   "version": "1.0.0",
   "description": "",
   "scripts": {
@@ -8,5 +8,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.12.1"
+  "packageManager": "pnpm@10.12.1",
+  "devDependencies": {
+    "nx": "^21.4.1"
+  }
 }

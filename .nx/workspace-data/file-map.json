@@ -1,0 +1,145 @@
+{
+  "version": "6.0",
+  "nxVersion": "21.4.1",
+  "pathMappings": {},
+  "nxJsonPlugins": [],
+  "fileMap": {
+    "nonProjectFiles": [
+      {
+        "file": "pnpm-workspace.yaml",
+        "hash": "4338752560729969404"
+      },
+      {
+        "file": ".gitignore",
+        "hash": "17449999939265954518"
+      },
+      {
+        "file": ".github/workflows/deploy-web-to-workers.yml",
+        "hash": "17540823075681409223"
+      },
+      {
+        "file": ".github/FUNDING.yml",
+        "hash": "16030505505327528903"
+      },
+      {
+        "file": "nx.json",
+        "hash": "4333743985580794340"
+      },
+      {
+        "file": "pnpm-lock.yaml",
+        "hash": "6137931907365287400"
+      },
+      {
+        "file": "package.json",
+        "hash": "4372928515362483754"
+      }
+    ],
+    "projectFileMap": {
+      "web": [
+        {
+          "file": "apps/web/.gitignore",
+          "hash": "18422237457936626720"
+        },
+        {
+          "file": "apps/web/.vscode/settings.json",
+          "hash": "12846056417064030106"
+        },
+        {
+          "file": "apps/web/README.md",
+          "hash": "6159861457809308441"
+        },
+        {
+          "file": "apps/web/env.d.ts",
+          "hash": "14271648955984536198"
+        },
+        {
+          "file": "apps/web/eslint.config.mjs",
+          "hash": "9457570080930645618"
+        },
+        {
+          "file": "apps/web/next.config.ts",
+          "hash": "16408887863333457867"
+        },
+        {
+          "file": "apps/web/open-next.config.ts",
+          "hash": "4772017482509558966"
+        },
+        {
+          "file": "apps/web/package.json",
+          "hash": "17482021040098073534",
+          "deps": [
+            "npm:@eslint/eslintrc",
+            "npm:@tailwindcss/postcss",
+            "npm:@types/node",
+            "npm:@types/react",
+            "npm:@types/react-dom",
+            "npm:eslint",
+            "npm:eslint-config-next",
+            "npm:typescript",
+            "npm:wrangler",
+            "npm:@opennextjs/cloudflare",
+            "npm:next",
+            "npm:react",
+            "npm:react-dom"
+          ]
+        },
+        {
+          "file": "apps/web/postcss.config.mjs",
+          "hash": "512361679910886401"
+        },
+        {
+          "file": "apps/web/project.json",
+          "hash": "12556058644879325726"
+        },
+        {
+          "file": "apps/web/public/_headers",
+          "hash": "13815411129893847473"
+        },
+        {
+          "file": "apps/web/public/file.svg",
+          "hash": "15617830351863523835"
+        },
+        {
+          "file": "apps/web/public/globe.svg",
+          "hash": "9134466864871335697"
+        },
+        {
+          "file": "apps/web/public/next.svg",
+          "hash": "8300767200008744458"
+        },
+        {
+          "file": "apps/web/public/window.svg",
+          "hash": "16677869292061012332"
+        },
+        {
+          "file": "apps/web/src/app/blog/[slug]/page.tsx",
+          "hash": "10122412256715810297"
+        },
+        {
+          "file": "apps/web/src/app/favicon.ico",
+          "hash": "9157999678830540297"
+        },
+        {
+          "file": "apps/web/src/app/globals.css",
+          "hash": "14621023620630552266"
+        },
+        {
+          "file": "apps/web/src/app/layout.tsx",
+          "hash": "7148613657099386232"
+        },
+        {
+          "file": "apps/web/src/app/page.tsx",
+          "hash": "5872226062675925176"
+        },
+        {
+          "file": "apps/web/tsconfig.json",
+          "hash": "8879794678954081712"
+        },
+        {
+          "file": "apps/web/wrangler.jsonc",
+          "hash": "5585849375593466136"
+        }
+      ]
+    }
+  }
+}
