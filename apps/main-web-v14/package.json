@@ -1,0 +1,43 @@
+{
+  "name": "main-web-v14",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "biome lint .",
+    "format": "biome format . --write",
+    "dev": "next dev",
+    "build": "next build",
+    "pages:build": "pnpx @cloudflare/next-on-pages",
+    "preview": "pnpm run pages:build && wrangler pages dev",
+    "deploy": "pnpm run pages:build && wrangler pages deploy",
+    "vercel-build": "next build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "axios": "^1.10.0",
+    "core-js": "^3.42.0",
+    "crypto": "^1.0.1",
+    "framer-motion": "^12.7.4",
+    "lucide-react": "^0.492.0",
+    "next": "14.2.30",
+    "razorpay": "^2.9.6",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
+    "react-range-slider-input": "^3.2.1",
+    "react-slider": "^2.0.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.0.4",
+    "@cloudflare/next-on-pages": "^1.13.5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "biome": "^0.3.3",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "wrangler": "^4.20.2"
+  }
+}

@@ -29,6 +29,7 @@
   },
   "projects": {
     "web": "apps/web",
+    "main-web-v14": "apps/main-web-v14",
     "cf-server": "apps/cf-server"
   }
 }
