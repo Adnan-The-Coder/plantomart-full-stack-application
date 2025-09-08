@@ -32,11 +32,11 @@ export default function AuthCallback() {
     try {
       // First get the IP address
       const ipResponse = await fetch('https://api.ipify.org?format=json');
-      const ipData = await ipResponse.json();
-      const ip = ipData.ip;
+      const ipData:any = await ipResponse.json();
+      const ip:any = ipData.ip;
       // Then get geolocation data
       const geoResponse = await fetch(`https://ipinfo.io/${ip}/json?token=db04343f368c67`);
-      const geoData = await geoResponse.json();
+      const geoData:any = await geoResponse.json();
       const geo: GeoLocation = {
         ip,
         city: geoData.city,
@@ -84,7 +84,7 @@ export default function AuthCallback() {
             },
           });
           if (profileRes.ok) {
-            const profileJson = await profileRes.json();
+            const profileJson:any = await profileRes.json();
             if (profileJson.success && profileJson.data) {
               profileData = profileJson.data;
             }
@@ -110,7 +110,7 @@ export default function AuthCallback() {
               }),
             });
             if (!createRes.ok) {
-              const err = await createRes.json();
+              const err:any = await createRes.json();
               console.error('Error creating profile:', err.message || 'Unknown error');
             }
           } else {
@@ -136,7 +136,7 @@ export default function AuthCallback() {
               }),
             });
             if (!updateRes.ok) {
-              const err = await updateRes.json();
+              const err:any = await updateRes.json();
               console.error('Error updating profile:', err.message || 'Unknown error');
             }
           }
