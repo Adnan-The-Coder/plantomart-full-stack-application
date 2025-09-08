@@ -73,7 +73,7 @@ function Featured() {
     try {
       const res = await fetch(API_ENDPOINTS.getFeaturedProducts);
       if (!res.ok) throw new Error('Failed to fetch featured products');
-      const json = await res.json();
+      const json:any = await res.json();
       if (!json.success || !json.data) throw new Error(json.message || 'No featured products found');
       setProducts(json.data);
       setWithExpiry('plantomartFeatured', json.data, 2 * 60 * 60 * 1000); // 2 hours

@@ -77,7 +77,7 @@ export default function VendorRegisterPage() {
         throw new Error('Failed to fetch profile');
       }
 
-      const profileJson = await res.json();
+      const profileJson:any = await res.json();
       if (!profileJson.success || !profileJson.data) {
         throw new Error(profileJson.message || 'Profile not found');
       }
@@ -111,7 +111,7 @@ export default function VendorRegisterPage() {
         throw new Error('Failed to fetch vendor profiles');
       }
 
-      const vendorJson = await vendorRes.json();
+      const vendorJson:any = await vendorRes.json();
       if (!vendorJson.success || !Array.isArray(vendorJson.data)) {
         throw new Error(vendorJson.message || 'Vendor data error');
       }

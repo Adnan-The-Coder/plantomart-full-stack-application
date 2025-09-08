@@ -72,7 +72,7 @@ export default function VendorDashboard() {
         throw new Error('Failed to fetch profile');
       }
       
-      const profileJson = await res.json();
+      const profileJson:any = await res.json();
       if (!profileJson.success || !profileJson.data) {
         throw new Error(profileJson.message || 'Profile not found');
       }
@@ -98,7 +98,7 @@ export default function VendorDashboard() {
           throw new Error('Failed to fetch vendor profiles');
         }
         
-        const vendorJson = await vendorRes.json();
+        const vendorJson:any = await vendorRes.json();
         if (!vendorJson.success || !Array.isArray(vendorJson.data)) {
           throw new Error(vendorJson.message || 'Vendor data error');
         }
@@ -166,7 +166,7 @@ export default function VendorDashboard() {
           throw new Error('Failed to fetch profile');
         }
         
-        const profileJson = await res.json();
+        const profileJson:any = await res.json();
         if (!profileJson.success || !profileJson.data) {
           throw new Error(profileJson.message || 'Profile not found');
         }
@@ -192,7 +192,7 @@ export default function VendorDashboard() {
           throw new Error('Failed to fetch vendor profiles');
         }
         
-        const vendorJson = await vendorRes.json();
+        const vendorJson:any = await vendorRes.json();
         if (!vendorJson.success || !Array.isArray(vendorJson.data)) {
           throw new Error(vendorJson.message || 'Vendor data error');
         }
@@ -239,7 +239,7 @@ export default function VendorDashboard() {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!res.ok) throw new Error('Failed to fetch products');
-      const json = await res.json();
+      const json:any = await res.json();
       if (!json.success || !Array.isArray(json.data)) throw new Error(json.message || 'Product data error');
       setProducts(json.data);
     } catch (err: any) {
