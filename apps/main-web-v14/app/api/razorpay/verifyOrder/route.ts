@@ -4,7 +4,22 @@ import crypto from "crypto";
 
 // export const runtime = 'edge';
 
-const generatedSignature = (
+// const generatedSignature = (
+//   razorpayOrderId: string,
+//   razorpayPaymentId: string
+// ) => {
+//   const keySecret = process.env.RAZORPAY_LIVE_KEY_SECRET as string;
+
+//   const sig = crypto
+//     .createHmac("sha256", keySecret)
+//     .update(razorpayOrderId + "|" + razorpayPaymentId)
+//     .digest("hex");
+//   return sig;
+// };
+
+export async function POST(request: NextRequest) {
+  
+  const generatedSignature = (
   razorpayOrderId: string,
   razorpayPaymentId: string
 ) => {
@@ -17,7 +32,6 @@ const generatedSignature = (
   return sig;
 };
 
-export async function POST(request: NextRequest) {
   const { orderId, razorpayPaymentId, razorpaySignature }:{ orderId:any, razorpayPaymentId:any, razorpaySignature:any } =
     await request.json();
 
