@@ -4,7 +4,7 @@ import { Heart, ShoppingCart, Check, Loader2, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
-import { API_ENDPOINTS } from '../../config/api';
+import { API_ENDPOINTS } from '@/config/api';
 
 // Utility for localStorage with expiry
 const setWithExpiry = (key: string, value: any, ttl: number) => {

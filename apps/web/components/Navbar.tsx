@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { supabase } from '../utils/supabase/client';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS } from '@/config/api';
 
 import SignIn from './auth/Sign-in';
 
@@ -58,7 +58,7 @@ function Navbar() {
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event:any, session:any) => {
+      (_event, session) => {
         if (session) {
           fetchUserProfile(session.user.id);
         } else {

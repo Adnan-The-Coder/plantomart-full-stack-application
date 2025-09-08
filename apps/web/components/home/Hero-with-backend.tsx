@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { FaMapMarkerAlt, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_ENDPOINTS } from '../../config/api';
+import { API_ENDPOINTS } from '@/config/api';
 import axios from 'axios';
 
 // Define proper types for the items

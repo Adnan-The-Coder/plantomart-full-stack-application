@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "description": "Build a full-stack web application with Next.js.",
+  "version": "0.1.0",
   "private": true,
   "cloudflare": {
     "label": "Next.js Framework Starter",
@@ -14,40 +14,43 @@
     "preview_image_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/e42eec61-db86-49c8-7b29-c3ed4783e400/public",
     "publish": true
   },
-  "dependencies": {
-    "@opennextjs/cloudflare": "1.3.0",
-    "@supabase/supabase-js": "^2.57.2",
-    "axios": "^1.11.0",
-    "framer-motion": "^12.23.12",
-    "lucide-react": "^0.542.0",
-    "next": "15.3.3",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "react-hot-toast": "^2.6.0",
-    "react-icons": "^5.5.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.0.4",
-    "@tailwindcss/postcss": "4.1.4",
-    "@types/node": "24.0.4",
-    "@types/react": "19.0.10",
-    "@types/react-dom": "19.0.4",
-    "autoprefixer": "^10.4.21",
-    "biome": "^0.3.3",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.4",
-    "typescript": "5.8.3",
-    "wrangler": "4.21.x"
-  },
   "scripts": {
     "build": "next build",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts",
-    "check": "npm run build && tsc",
+    "check": "pnpm run build && tsc",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "dev": "next dev",
     "lint": "biome lint .",
     "format": "biome format . --write",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "start": "next start"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "1.3.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "axios": "^1.10.0",
+    "core-js": "^3.42.0",
+    "crypto": "^1.0.1",
+    "framer-motion": "^12.7.4",
+    "lucide-react": "^0.492.0",
+    "razorpay": "^2.9.6",
+    "next": "15.3.3",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
+    "react-range-slider-input": "^3.2.1",
+    "react-slider": "^2.0.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.0.4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "biome": "^0.3.3",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "wrangler": "^4.20.2"
   }
 }

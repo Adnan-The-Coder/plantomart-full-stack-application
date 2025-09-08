@@ -16,9 +16,8 @@ import {
   FaSeedling
 } from 'react-icons/fa';
 import Image from 'next/image';
-// import Navbar from '@/components/Navbar';
-import Navbar from '../../components/Navbar';
-import Footer from '../../components/Footer';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const AboutPage = () => {
   const [isVisible, setIsVisible] = useState(false);

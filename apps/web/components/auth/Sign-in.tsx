@@ -9,8 +9,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, X, Info } from 'lucide-react';
 
-import { supabase } from '../../utils/supabase/client';
-import { API_ENDPOINTS } from '../../config/api';
+import { supabase } from '@/utils/supabase/client';
+import { API_ENDPOINTS } from '@/config/api';
 
 interface SignInProps {
   isOpen: boolean;
