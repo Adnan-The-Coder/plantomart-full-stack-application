@@ -108,7 +108,7 @@ return;
           }),
         });
         if (!res.ok) {
-          const err = await res.json();
+          const err:any = await res.json();
           throw new Error(err.message || 'Failed to create user profile');
         }
         setSuccess('Account created successfully! Please check your email to confirm your account.');
