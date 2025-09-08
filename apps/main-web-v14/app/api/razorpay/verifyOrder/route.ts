@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
-export const runtime = 'edge';
+// export const runtime = 'edge';
 
 const generatedSignature = (
   razorpayOrderId: string,
