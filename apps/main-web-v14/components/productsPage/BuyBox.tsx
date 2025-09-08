@@ -69,7 +69,7 @@ const BuyBox: React.FC<BuyBoxProps> = ({
         body: JSON.stringify({ amount: amount * 100 }),
       });
       
-      const data = await res.json();
+      const data:any = await res.json();
       
       // Setup Razorpay payment
       const PaymentData = {
@@ -94,7 +94,7 @@ const BuyBox: React.FC<BuyBoxProps> = ({
             }),
           });
           
-          const data = await res.json();
+          const data:any = await res.json();
           
           if (data.isOk) {
             // Payment successful - 
