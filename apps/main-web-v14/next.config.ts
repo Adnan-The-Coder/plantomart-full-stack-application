@@ -1,0 +1,22 @@
+// /** @type {import('next').NextConfig} */
+// const nextConfig = {
+    // images: {
+    //     domains: ['lh3.googleusercontent.com','images.unsplash.com','example.com']
+    //   }
+// };
+
+// export default nextConfig;
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+        domains: ['lh3.googleusercontent.com','images.unsplash.com','example.com']
+      }
+};
+
+export default nextConfig;
+
+// added by create cloudflare to enable calling `getCloudflareContext()` in `next dev`
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+initOpenNextCloudflareForDev();
