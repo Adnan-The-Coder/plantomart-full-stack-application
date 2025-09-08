@@ -10,7 +10,7 @@ const razorpay = new Razorpay({
 
 
 export async function POST(req:Request) {
-    const {amount} = await req.json();
+    const {amount}:{amount:any} = await req.json();
     const order = await razorpay.orders.create({
         amount,
         currency:"INR",
