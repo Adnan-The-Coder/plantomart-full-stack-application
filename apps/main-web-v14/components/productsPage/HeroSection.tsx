@@ -123,7 +123,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!res.ok) throw new Error('Failed to fetch product');
-      const json = await res.json();
+      const json:any = await res.json();
       if (!json.success || !json.data) throw new Error(json.message || 'Product not found');
       setProduct(json.data);
       setBaseTitle(json.data.title); // Store the original title
@@ -154,7 +154,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
       // First, try to get all vendors and find the one with matching vendor_id
       const allVendorsRes = await fetch(API_ENDPOINTS.getAllVendorsPublic);
       if (!allVendorsRes.ok) throw new Error('Failed to fetch vendors');
-      const vendorsJson = await allVendorsRes.json();
+      const vendorsJson:any = await allVendorsRes.json();
       if (!vendorsJson.success || !Array.isArray(vendorsJson.data)) throw new Error('Vendors data error');
       
       const foundVendor = vendorsJson.data.find((v: any) => 
@@ -182,7 +182,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
       });
       
       if (res.ok) {
-        const json = await res.json();
+        const json:any = await res.json();
         if (!json.success || !json.data) throw new Error(json.message || 'Vendor not found');
          setVendorData(json.data);
       } else {
@@ -313,7 +313,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
         body: JSON.stringify({ amount: amount * 100 }),
       });
       
-      const data = await res.json();
+      const data:any = await res.json();
       
       // Setup Razorpay payment
       const PaymentData = {
@@ -338,7 +338,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
             }),
           });
           
-          const data = await res.json();
+          const data:any = await res.json();
           
           if (data.isOk) {
             // Payment successful - 

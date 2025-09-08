@@ -97,7 +97,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ slug }) => {
 
     try {
       const response = await fetch(API_ENDPOINTS.getProfileByUUID(userUuid));
-      const data = await response.json();
+      const data:any = await response.json();
       
       if (data.success && data.data) {
         const profile = data.data;
@@ -148,7 +148,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ slug }) => {
   const fetchProduct = async () => {
     try {
       const response = await fetch(API_ENDPOINTS.getProductBySlug(slug));
-      const data = await response.json();
+      const data:any = await response.json();
       
       if (data.success && data.data) {
         setProduct(data.data);
@@ -173,7 +173,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ slug }) => {
       });
 
       const response = await fetch(`${API_ENDPOINTS.getReviewByProductID(productId)}`);
-      const data = await response.json();
+      const data:any = await response.json();
       console.log("Reviews as product ID: ", data);
       
       if (data.success) {
@@ -204,7 +204,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ slug }) => {
   const fetchReviewStats = async (productId: string) => {
     try {
       const response = await fetch(API_ENDPOINTS.getReviewStats(productId));
-      const data = await response.json();
+      const data:any = await response.json();
       
       if (data.success) {
         setReviewStats(data.data);
@@ -259,7 +259,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ slug }) => {
         })
       });
 
-      const data = await response.json();
+      const data:any = await response.json();
       
       if (data.success) {
         setNewReview('');
@@ -300,7 +300,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ slug }) => {
         body: JSON.stringify({ user_uuid: user.id })
       });
 
-      const data = await response.json();
+      const data:any = await response.json();
       
       if (data.success && product) {
         await fetchReviews(product.product_id);
@@ -326,7 +326,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ slug }) => {
         })
       });
 
-      const data = await response.json();
+      const data:any = await response.json();
       
       if (data.success && product) {
         setReplyText('');
