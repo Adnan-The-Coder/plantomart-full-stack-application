@@ -275,7 +275,7 @@ export default function AccountPage() {
       if (!res.ok) {
         throw new Error('Failed to fetch profile');
       }
-      const profileJson = await res.json();
+      const profileJson:any = await res.json();
       if (!profileJson.success || !profileJson.data) {
         throw new Error(profileJson.message || 'Profile not found');
       }
@@ -299,7 +299,7 @@ export default function AccountPage() {
           headers: { 'Content-Type': 'application/json' },
         });
         if (!vendorRes.ok) throw new Error('Failed to fetch vendor profiles');
-        const vendorJson = await vendorRes.json();
+        const vendorJson:any = await vendorRes.json();
         if (!vendorJson.success || !Array.isArray(vendorJson.data)) throw new Error(vendorJson.message || 'Vendor data error');
         // Try to match by user_uuid, user_id, or vendor_id
         const found = vendorJson.data.find((v: any) =>
@@ -362,7 +362,7 @@ export default function AccountPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err:any = await res.json();
         throw new Error(err.message || 'Failed to update profile');
       }
       setProfile({
