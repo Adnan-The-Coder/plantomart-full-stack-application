@@ -23,6 +23,7 @@ Planto-Mart is a robust, full-stack eCommerce platform built for multi-vendor op
 
 The platform is built with scalability, security, and ease of use in mind, enabling a wide range of businesses to set up their online presence, sell products, and track performance.
 
+
 <div style="flex: 1; min-width: 250px;">
     <h3>Built With</h3>
     <p>
