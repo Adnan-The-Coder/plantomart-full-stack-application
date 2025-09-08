@@ -723,7 +723,7 @@ export default function VendorRegister({
         body: JSON.stringify(submissionData),
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err:any = await res.json();
         throw new Error(err.message || 'Failed to register vendor');
       }
       setSuccess('Vendor registration successful! You will be notified once your application is reviewed.');

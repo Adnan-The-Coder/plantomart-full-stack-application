@@ -210,7 +210,7 @@ const ProductListingModal = ({
           headers: { 'Content-Type': 'application/json' },
         });
         if (!res.ok) throw new Error('Failed to fetch vendor profiles');
-        const vendorJson = await res.json();
+        const vendorJson:any = await res.json();
         if (!vendorJson.success || !Array.isArray(vendorJson.data)) throw new Error(vendorJson.message || 'Vendor data error');
         const found = vendorJson.data.find((v: any) =>
           v.user_uuid === userId ||
@@ -244,7 +244,7 @@ const ProductListingModal = ({
         headers: { 'Content-Type': 'application/json' },
       });
       if (!res.ok) throw new Error('Failed to fetch vendor brand info');
-      const json = await res.json();
+      const json:any = await res.json();
       if (!json.success || !json.data) throw new Error(json.message || 'Vendor brand info not found');
       
       setVendorBrandInfo(json.data);
@@ -314,7 +314,7 @@ const ProductListingModal = ({
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
         });
-        const json = await res.json();
+        const json:any = await res.json();
         if (!res.ok || !json.success) {
           alert('Failed to delete variant: ' + (json.message || 'Unknown error'));
           setVariantDeleteLoading(null);
@@ -553,7 +553,7 @@ const ProductListingModal = ({
           body: JSON.stringify(payload),
         });
 
-        const json = await res.json();
+        const json:any = await res.json();
         if (!res.ok || !json.success) {
           setStatus('error');
           setApiError(json.message || 'Failed to create product.');
@@ -585,7 +585,7 @@ const ProductListingModal = ({
                 body: JSON.stringify(variantPayload),
               });
 
-              const variantJson = await variantRes.json();
+              const variantJson:any = await variantRes.json();
               if (!variantRes.ok) {
                 console.error('Failed to create variant:', variant.variant_name, variantJson);
                 variantCreationSuccess = false;
@@ -637,7 +637,7 @@ const ProductListingModal = ({
           body: JSON.stringify(payload),
         });
         
-        const json = await res.json();
+        const json:any = await res.json();
         if (!res.ok || !json.success) {
           setStatus('error');
           setApiError(json.message || 'Failed to update product.');
@@ -666,7 +666,7 @@ const ProductListingModal = ({
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(variantPayload),
                 });
-                const variantJson = await variantRes.json();
+                const variantJson:any = await variantRes.json();
                 if (!variantRes.ok) {
                   console.error('Failed to update variant:', variant.variant_name, variantJson);
                   variantOpsSuccess = false;
@@ -681,7 +681,7 @@ const ProductListingModal = ({
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(variantPayload),
                 });
-                const variantJson = await variantRes.json();
+                const variantJson:any = await variantRes.json();
                 if (!variantRes.ok) {
                   console.error('Failed to create variant:', variant.variant_name, variantJson);
                   variantOpsSuccess = false;

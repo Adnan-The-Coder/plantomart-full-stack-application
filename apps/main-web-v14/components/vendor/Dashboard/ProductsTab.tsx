@@ -78,7 +78,7 @@ function ProductsTab({ products, loading, error, onRefresh, user, vendorId }: Pr
         headers: { 'Content-Type': 'application/json' },
       });
       if (!res.ok) throw new Error('Failed to delete product');
-      const json = await res.json();
+      const json:any = await res.json();
       if (!json.success) throw new Error(json.message || 'Delete failed');
       // Reset modal state BEFORE refresh
       setDeleteModalOpen(false);
@@ -225,7 +225,7 @@ function ProductsTab({ products, loading, error, onRefresh, user, vendorId }: Pr
                                 method: 'GET',
                                 headers: { 'Content-Type': 'application/json' },
                               });
-                              const json = await res.json();
+                              const json:any = await res.json();
                               if (json.success && json.data) {
                                 setProductToEdit(json.data);
                                 setIsEditModalOpen(true);

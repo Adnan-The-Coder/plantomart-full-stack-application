@@ -70,7 +70,7 @@ const StoreBrandingTab = () => {
       try {
         // Check if slug is available by trying to fetch a vendor with this slug
         const res = await fetch(`${API_ENDPOINTS.getAllVendorsPublic}?slug=${branding.slug}`);
-        const data = await res.json();
+        const data:any = await res.json();
         const slugExists = data.data?.some((vendor: any) => vendor.slug === branding.slug && vendor.id !== original.id);
         setSlugAvailable(!slugExists);
       } catch (err) {
@@ -97,7 +97,7 @@ const StoreBrandingTab = () => {
           headers: { 'Content-Type': 'application/json' },
         });
         if (!res.ok) throw new Error('Failed to fetch vendor profile');
-        const json = await res.json();
+        const json:any = await res.json();
         if (!json.success || !json.data) throw new Error(json.message || 'Vendor profile not found');
         
         const vendorData = {
@@ -253,7 +253,7 @@ const StoreBrandingTab = () => {
       console.log('Response status:', res.status);
       console.log('Response ok:', res.ok);
       
-      const json = await res.json();
+      const json:any = await res.json();
       console.log('Response JSON:', json);
       
       if (!res.ok) {

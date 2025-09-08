@@ -44,7 +44,7 @@ function CompletePage({ slug }: { slug: string }) {
         setError(null);
         
         const response = await fetch(API_ENDPOINTS.getVendorBySlug(slug));
-        const result = await response.json();
+        const result:any = await response.json();
         
         if (!result.success) {
           throw new Error(result.message || 'Failed to fetch vendor data');

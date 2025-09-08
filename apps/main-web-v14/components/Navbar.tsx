@@ -108,7 +108,7 @@ function Navbar() {
         return;
       }
       
-      const json = await res.json();
+      const json:any = await res.json();
       if (!json.success || !json.data) {
         console.error('Error fetching user profile:', json.message);
         // Fallback to auth data
