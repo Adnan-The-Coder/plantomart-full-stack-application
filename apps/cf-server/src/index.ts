@@ -50,7 +50,7 @@ app.use('*', cors({
     const allowedOrigins = [
       "http://localhost:3000",
       // "https://main-website-plantomart.pages.dev",
-      "product/bedroom-plants-combo-for-indoor-plants-for-bedroom-oxygen-plants",
+      "https://web.plantomart.workers.dev/",
       "https://plantomart-web.plantomart.workers.dev",
       "https://main-website-seven-alpha.vercel.app"
     ];
