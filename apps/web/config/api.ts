@@ -64,7 +64,15 @@ export const API_ENDPOINTS = {
     deleteAllReviewsForProduct: (productId: string) => `${API_BASE_URL}/reviews/product/${productId}`,
     getReviewStats: (productId: string) => `${API_BASE_URL}/product/reviews/product/${productId}/stats`,
     bulkDeleteReviews: `${API_BASE_URL}/product/reviews/bulk-delete`,
-    getRecentReviews: `${API_BASE_URL}/product/reviews/recent`  
+    getRecentReviews: `${API_BASE_URL}/product/reviews/recent`,
+    getReviewsByVendorID: (vendorId: string, query?: { sortBy?: string; page?: number; limit?: number }) => {
+        const params = new URLSearchParams();
+        if (query?.sortBy) params.set('sortBy', query.sortBy);
+        if (typeof query?.page === 'number') params.set('page', String(query.page));
+        if (typeof query?.limit === 'number') params.set('limit', String(query.limit));
+        const qs = params.toString();
+        return `${API_BASE_URL}/product/reviews/vendor/${vendorId}${qs ? `?${qs}` : ''}`;
+    }
 
 
 }   

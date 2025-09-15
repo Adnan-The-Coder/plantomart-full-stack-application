@@ -18,7 +18,7 @@ import {
   getProductsByCategory
 } from '../controllers/product';
 import { createProductCombination, bulkCreateProductCombinations, getProductCombinations, getProductCombination, updateProductCombination, deleteProductCombination, getCombinationsForProduct, deleteProductCombinationsForProduct, getCombinationsContainingProduct } from '../controllers/productCombiner';
-import { createProductReview, getReviewByProductID, getProductReview, updateProductReview, deleteProductReview, likeReview, dislikeReview, removeLikeDislike, addReplyToReview, deleteAllReviewsForProduct, getReviewStats, bulkDeleteReviews, getRecentReviews } from '../controllers/ProductReviews';
+import { createProductReview, getReviewByProductID, getProductReview, updateProductReview, deleteProductReview, likeReview, dislikeReview, removeLikeDislike, addReplyToReview, deleteAllReviewsForProduct, getReviewStats, bulkDeleteReviews, getRecentReviews, getReviewsByVendorID } from '../controllers/ProductReviews';
 
 const productRoutes = new Hono();
 
@@ -58,6 +58,7 @@ productRoutes.delete('/reviews/product/:productId', deleteAllReviewsForProduct);
 productRoutes.get('/reviews/product/:productId/stats', getReviewStats);
 productRoutes.post('/reviews/bulk-delete', bulkDeleteReviews);
 productRoutes.get('/reviews/recent', getRecentReviews);
+productRoutes.get('/reviews/vendor/:vendorId', getReviewsByVendorID);
 
 // Product combination routes 
 productRoutes.post('/combinations/create', createProductCombination);

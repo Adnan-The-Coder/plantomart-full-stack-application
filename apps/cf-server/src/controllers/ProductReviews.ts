@@ -1189,3 +1189,101 @@ export const getRecentReviews = async (c: Context) => {
     );
   }
 };
+
+// Get reviews by Vendor ID with pagination and sorting
+export const getReviewsByVendorID = async (c: Context) => {
+  try {
+    const db = drizzle(c.env.DB);
+    const { vendorId } = c.req.param();
+    const { sortBy = 'newest', page = '1', limit = '10' } = c.req.query();
+
+    const pageNumber = parseInt(page as string, 10);
+    const limitNumber = Math.min(parseInt(limit as string, 10), 50);
+    const offset = (pageNumber - 1) * limitNumber;
+
+    if (!vendorId) {
+      return c.json(
+        {
+          success: false,
+          message: 'Vendor ID is required'
+        },
+        400
+      );
+    }
+
+    // Find all products for this vendor
+    const vendorProducts = await db
+      .select({ product_id: products.product_id, title: products.title })
+      .from(products)
+      .where(eq(products.vendorID, vendorId));
+
+    if (vendorProducts.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No products found for this vendor',
+        data: [],
+        pagination: { page: pageNumber, limit: limitNumber, count: 0 }
+      });
+    }
+
+    const productIds = vendorProducts.map((p) => p.product_id);
+
+    // Sorting logic
+    let orderClause;
+    switch (sortBy) {
+      case 'oldest':
+        orderClause = asc(productReviews.created_at);
+        break;
+      case 'likes':
+        orderClause = desc(productReviews.likes);
+        break;
+      case 'dislikes':
+        orderClause = desc(productReviews.dislikes);
+        break;
+      case 'newest':
+      default:
+        orderClause = desc(productReviews.created_at);
+        break;
+    }
+
+    // Fetch reviews for these product IDs
+    const results = await db
+      .select()
+      .from(productReviews)
+      .where(inArray(productReviews.product_id, productIds))
+      .orderBy(orderClause)
+      .limit(limitNumber)
+      .offset(offset);
+
+    // Map product titles
+    const productTitleMap = new Map(vendorProducts.map((p) => [p.product_id, p.title] as const));
+
+    const formattedResults = results.map((review) => ({
+      ...review,
+      liked_by: JSON.parse(review.liked_by as string),
+      disliked_by: JSON.parse(review.disliked_by as string),
+      replies: JSON.parse(review.replies as string),
+      product_title: productTitleMap.get(review.product_id) || null
+    }));
+
+    return c.json({
+      success: true,
+      message: 'Vendor reviews retrieved successfully',
+      data: formattedResults,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        count: formattedResults.length
+      }
+    });
+  } catch (error) {
+    console.error('Get reviews by vendor ID error:', error);
+    return c.json(
+      {
+        success: false,
+        message: 'Internal server error. Please try again later.'
+      },
+      500
+    );
+  }
+};
