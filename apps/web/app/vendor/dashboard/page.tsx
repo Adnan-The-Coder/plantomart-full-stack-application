@@ -450,7 +450,7 @@ export default function VendorDashboard() {
           <OrdersTab orders={orders} />
         )}
         {activeTab === 'reviews' && (
-          <ReviewsTab reviews={reviews} />
+          <ReviewsTab vendorId={vendorId ?? undefined} />
         )}
         {activeTab === 'customers' && (
           <CustomersTab customers={customers} />

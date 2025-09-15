@@ -29,7 +29,7 @@ function ReviewsTab({ vendorId: vendorIdProp }: ReviewsTabProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<VendorReview[]>([]);
-  const [vendorId, setVendorId] = useState<string | null>(vendorIdProp || null);
+  const [vendorId, setVendorId] = useState<string | undefined>(vendorIdProp || undefined);
   const [userModal, setUserModal] = useState<{ open: boolean; user_uuid?: string; user?: any; loading?: boolean; error?: string | null }>({ open: false });
 
   useEffect(() => {
@@ -44,7 +44,7 @@ function ReviewsTab({ vendorId: vendorIdProp }: ReviewsTabProps) {
           if (!uid) throw new Error('Not authenticated');
           const res = await fetch(API_ENDPOINTS.getAllVendorsAdmin, { headers: { 'Content-Type': 'application/json' } });
           if (!res.ok) throw new Error('Failed to fetch vendors');
-          const json = await res.json();
+          const json:any = await res.json();
           const found = Array.isArray(json.data) ? json.data.find((v: any) => v.user_uuid === uid || v.vendor_id === uid || v.user_id === uid) : null;
           vId = found?.vendor_id || found?.user_uuid || found?.user_id || null;
           setVendorId(vId);
@@ -52,7 +52,7 @@ function ReviewsTab({ vendorId: vendorIdProp }: ReviewsTabProps) {
         if (!vId) throw new Error('Vendor not found');
         const reviewsRes = await fetch(API_ENDPOINTS.getReviewsByVendorID(vId, { sortBy: 'newest', page: 1, limit: 50 }), { headers: { 'Content-Type': 'application/json' } });
         if (!reviewsRes.ok) throw new Error('Failed to fetch vendor reviews');
-        const reviewsJson = await reviewsRes.json();
+        const reviewsJson:any = await reviewsRes.json();
         if (!reviewsJson.success) throw new Error(reviewsJson.message || 'Failed to load reviews');
         setReviews(reviewsJson.data || []);
       } catch (e: any) {
