@@ -110,8 +110,8 @@ const ProductListingModal = ({
   const firstErrorRef = useRef<HTMLInputElement | null>(null);
   const [variantDeleteLoading, setVariantDeleteLoading] = useState<string | null>(null);
   const variantFileInputRefs = useRef<{ [key: string]: HTMLInputElement }>({});
-  const contentDescRef = useRef<HTMLTextAreaElement | null>(null);
-  const contentShipRef = useRef<HTMLTextAreaElement | null>(null);
+  const contentDescRef = useRef<HTMLTextAreaElement>(null) as React.RefObject<HTMLTextAreaElement>;
+  const contentShipRef = useRef<HTMLTextAreaElement>(null) as React.RefObject<HTMLTextAreaElement>;
   const [showDescPreview, setShowDescPreview] = useState(false);
   const [showShipPreview, setShowShipPreview] = useState(false);
 
