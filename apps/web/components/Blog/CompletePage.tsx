@@ -4,6 +4,7 @@ import { Calendar, Clock, User, Tag, Eye, ArrowLeft, Share2, Bookmark } from 'lu
 import Footer from '../Footer';
 import Navbar from '../Navbar';
 import Link from 'next/link';
+import { API_BASE_URL, API_ENDPOINTS } from '@/config/api';
 
 // Interface for blog data
 interface BlogData {
@@ -105,7 +106,8 @@ const CompletePage: React.FC<CompletePageProps> = ({ slug = "productivity-hacks-
         setError(null);
 
         const response = await fetch(
-          `https://backend-server.developer-plantomart.workers.dev/blog/get/${encodeURIComponent(slug)}`
+          `${API_BASE_URL}/blog/get/${encodeURIComponent(slug)}`
+          // `${API_ENDPOINTS}.getBlogBySlug(slug)`;
         );
 
         if (!response.ok) {
