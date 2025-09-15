@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedFunctionParameters: will see while refactoring */
 /** biome-ignore-all lint/correctness/noUnusedImports: will look in future */
 import { useState, useRef, useEffect } from 'react';
-import { X, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Camera, Info, Building2, Edit, Save, Package } from 'lucide-react';
+import { X, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Camera, Info, Building2, Edit, Save, Package, Heading1, Heading2, Bold as BoldIcon, Italic as ItalicIcon, List as ListIcon, ListOrdered, Quote, Code as CodeIcon, Link2, Minus, Eye, EyeOff, Eraser } from 'lucide-react';
 import Image from 'next/image';
 import { API_ENDPOINTS } from '@/config/api';
 import { supabase } from '@/utils/supabase/client';
@@ -67,6 +67,8 @@ const ProductListingModal = ({
   const [form, setForm] = useState({
     title: '',
     description: '',
+    content_description: '',
+    content_shipping_delivery: '',
     category: '',
     about_in_bullets: [''],
     image_gallery: [] as string[],
@@ -108,6 +110,10 @@ const ProductListingModal = ({
   const firstErrorRef = useRef<HTMLInputElement | null>(null);
   const [variantDeleteLoading, setVariantDeleteLoading] = useState<string | null>(null);
   const variantFileInputRefs = useRef<{ [key: string]: HTMLInputElement }>({});
+  const contentDescRef = useRef<HTMLTextAreaElement | null>(null);
+  const contentShipRef = useRef<HTMLTextAreaElement | null>(null);
+  const [showDescPreview, setShowDescPreview] = useState(false);
+  const [showShipPreview, setShowShipPreview] = useState(false);
 
   // Initialize form with product data when editing
   useEffect(() => {
@@ -116,6 +122,8 @@ const ProductListingModal = ({
       setForm({
         title: product.title || '',
         description: product.description || '',
+        content_description: (product as any).content_description || '',
+        content_shipping_delivery: (product as any).content_shipping_delivery || '',
         category: product.category || '',
         about_in_bullets: product.about_in_bullets && Array.isArray(product.about_in_bullets) 
           ? product.about_in_bullets 
@@ -168,6 +176,8 @@ const ProductListingModal = ({
       setForm({
         title: '',
         description: '',
+        content_description: '',
+        content_shipping_delivery: '',
         category: '',
         about_in_bullets: [''],
         image_gallery: [],
@@ -409,6 +419,109 @@ const ProductListingModal = ({
     }));
   };
 
+  // Basic markdown insertion helpers
+  const insertMarkdownAtSelection = (field: 'content_description' | 'content_shipping_delivery', ref: React.RefObject<HTMLTextAreaElement>, syntax: string) => {
+    const textarea = ref.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const text = textarea.value || '';
+
+    const selected = text.slice(start, end);
+    let before = text.slice(0, start);
+    let after = text.slice(end);
+    let replace = selected;
+
+    switch (syntax) {
+      case 'h1':
+        replace = `# ${selected || 'Heading 1'}`;
+        break;
+      case 'h2':
+        replace = `## ${selected || 'Heading 2'}`;
+        break;
+      case 'bold':
+        replace = `**${selected || 'bold text'}**`;
+        break;
+      case 'italic':
+        replace = `*${selected || 'italic text'}*`;
+        break;
+      case 'ul':
+        replace = (selected || 'List item')
+          .split('\n')
+          .map((l) => `- ${l}`)
+          .join('\n');
+        break;
+      case 'ol':
+        replace = (selected || 'First item\nSecond item')
+          .split('\n')
+          .map((l, i) => `${i + 1}. ${l}`)
+          .join('\n');
+        break;
+      case 'quote':
+        replace = (selected || 'Quoted text')
+          .split('\n')
+          .map((l) => `> ${l}`)
+          .join('\n');
+        break;
+      case 'code':
+        replace = '```\n' + (selected || 'code') + '\n```';
+        break;
+      case 'link':
+        replace = `[${selected || 'link text'}](https://example.com)`;
+        break;
+      case 'hr':
+        before = before.replace(/\n?$/, '\n');
+        replace = '---\n';
+        after = after.replace(/^\n?/, '');
+        break;
+      case 'clear':
+        replace = selected
+          .replace(/^#\s+/gm, '')
+          .replace(/^##\s+/gm, '')
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/^>\s+/gm, '')
+          .replace(/^\-\s+/gm, '')
+          .replace(/^\d+\.\s+/gm, '')
+          .replace(/```([\s\S]*?)```/g, '$1')
+          .replace(/\[(.*?)\]\((.*?)\)/g, '$1');
+        break;
+      default:
+        break;
+    }
+
+    const newValue = before + replace + after;
+    setForm((prev) => ({ ...prev, [field]: newValue }));
+
+    requestAnimationFrame(() => {
+      if (!textarea) return;
+      textarea.focus();
+      const cursorPos = before.length + replace.length;
+      textarea.setSelectionRange(cursorPos, cursorPos);
+    });
+  };
+
+  // Lightweight markdown preview (mirrors product page rules closely)
+  const convertMarkdownToHTML = (markdown: string): string => {
+    if (!markdown) return '';
+    return markdown
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-gray-900 mb-2 mt-4">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-gray-900 mb-3 mt-5">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-gray-900 mb-4 mt-6">$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-900 text-gray-100 rounded p-3 overflow-x-auto my-3"><code>$1</code></pre>')
+      .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-blue-600 underline">$1</a>')
+      .replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-green-500 bg-green-50 pl-4 py-2 italic my-3">$1</blockquote>')
+      .replace(/^\- (.*$)/gim, '<li class="ml-5 list-disc">$1</li>')
+      .replace(/^(\d+)\. (.*$)/gim, '<li class="ml-5 list-decimal">$2</li>')
+      .replace(/^---$/gim, '<hr class="my-4"/>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br/>')
+      .replace(/^(?!<[h1-6]|<ul|<ol|<pre|<blockquote|<hr|<li)(.+)/gm, '<p>$1</p>');
+  };
+
   const normalizeVariantGallery = (gallery: any): string[] => {
     if (!gallery) return [];
     if (typeof gallery === 'string') {
@@ -435,6 +548,14 @@ const ProductListingModal = ({
     if (!form.description.trim()) {
       newErrors.description = 'Description is required';
       errorSummary.push('Description is required');
+    }
+    if (!form.content_description.trim()) {
+      newErrors.content_description = 'Detailed description (markdown) is required';
+      errorSummary.push('Detailed description (markdown) is required');
+    }
+    if (!form.content_shipping_delivery.trim()) {
+      newErrors.content_shipping_delivery = 'Shipping & delivery info (markdown) is required';
+      errorSummary.push('Shipping & delivery info (markdown) is required');
     }
     if (!form.category) {
       newErrors.category = 'Category is required';
@@ -530,6 +651,8 @@ const ProductListingModal = ({
           slug,
           title: form.title.trim(),
           description: form.description.trim(),
+          content_description: form.content_description.trim(),
+          content_shipping_delivery: form.content_shipping_delivery.trim(),
           category: form.category,
           about_in_bullets: form.about_in_bullets.filter((b) => b.trim()),
           image_gallery: form.image_gallery,
@@ -616,6 +739,8 @@ const ProductListingModal = ({
         const payload: any = {
           title: form.title.trim(),
           description: form.description.trim(),
+          content_description: form.content_description.trim(),
+          content_shipping_delivery: form.content_shipping_delivery.trim(),
           category: form.category,
           about_in_bullets: form.about_in_bullets.filter((b) => b.trim()),
           image_gallery: form.image_gallery,
@@ -883,7 +1008,7 @@ const ProductListingModal = ({
               </div>
             </div>
           )}
-          {/* Step 2: Images & Features */}
+          {/* Step 2: Images, Features & Markdown Details */}
           {step === 2 && (
             <div className="space-y-6">
               {/* Image Upload */}
@@ -926,6 +1051,81 @@ const ProductListingModal = ({
                 ))}
                 <button aria-label="Add feature" type="button" onClick={() => addArrayItem('about_in_bullets')} className="text-green-600 hover:text-green-700 flex items-center space-x-1 text-sm mt-2"><Plus className="w-4 h-4" /><span>Add Feature</span></button>
                 {errors.about_in_bullets && <p className="text-red-500 text-sm mt-1">{errors.about_in_bullets}</p>}
+              </div>
+              {/* Markdown: Detailed Description */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">Detailed Description (Markdown) *</label>
+                  <div className="flex items-center gap-1">
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'h1')} title="H1"><Heading1 className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'h2')} title="H2"><Heading2 className="w-4 h-4" /></button>
+                    <span className="mx-1 w-px h-4 bg-gray-200" />
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'bold')} title="Bold"><BoldIcon className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'italic')} title="Italic"><ItalicIcon className="w-4 h-4" /></button>
+                    <span className="mx-1 w-px h-4 bg-gray-200" />
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'ul')} title="Bulleted List"><ListIcon className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'ol')} title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'quote')} title="Blockquote"><Quote className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'code')} title="Code Block"><CodeIcon className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'link')} title="Link"><Link2 className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'hr')} title="Horizontal Rule"><Minus className="w-4 h-4" /></button>
+                    <span className="mx-1 w-px h-4 bg-gray-200" />
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_description', contentDescRef, 'clear')} title="Clear formatting"><Eraser className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded ml-1" onClick={() => setShowDescPreview((p) => !p)} title="Toggle Preview">{showDescPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                  </div>
+                </div>
+                {!showDescPreview ? (
+                  <textarea
+                    ref={contentDescRef}
+                    name="content_description"
+                    value={form.content_description}
+                    onChange={handleChange}
+                    rows={6}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${errors.content_description ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="# Title\n\nWrite a detailed description using markdown..."
+                  />
+                ) : (
+                  <div className="prose max-w-none border rounded-lg p-3 bg-gray-50" dangerouslySetInnerHTML={{ __html: convertMarkdownToHTML(form.content_description) }} />
+                )}
+                {errors.content_description && <p className="text-red-500 text-sm mt-1">{errors.content_description}</p>}
+              </div>
+
+              {/* Markdown: Shipping & Delivery */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">Shipping & Delivery (Markdown) *</label>
+                  <div className="flex items-center gap-1">
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'h1')} title="H1"><Heading1 className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'h2')} title="H2"><Heading2 className="w-4 h-4" /></button>
+                    <span className="mx-1 w-px h-4 bg-gray-200" />
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'bold')} title="Bold"><BoldIcon className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'italic')} title="Italic"><ItalicIcon className="w-4 h-4" /></button>
+                    <span className="mx-1 w-px h-4 bg-gray-200" />
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'ul')} title="Bulleted List"><ListIcon className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'ol')} title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'quote')} title="Blockquote"><Quote className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'code')} title="Code Block"><CodeIcon className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'link')} title="Link"><Link2 className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'hr')} title="Horizontal Rule"><Minus className="w-4 h-4" /></button>
+                    <span className="mx-1 w-px h-4 bg-gray-200" />
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded" onClick={() => insertMarkdownAtSelection('content_shipping_delivery', contentShipRef, 'clear')} title="Clear formatting"><Eraser className="w-4 h-4" /></button>
+                    <button type="button" className="p-1 hover:bg-gray-100 rounded ml-1" onClick={() => setShowShipPreview((p) => !p)} title="Toggle Preview">{showShipPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                  </div>
+                </div>
+                {!showShipPreview ? (
+                  <textarea
+                    ref={contentShipRef}
+                    name="content_shipping_delivery"
+                    value={form.content_shipping_delivery}
+                    onChange={handleChange}
+                    rows={5}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${errors.content_shipping_delivery ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder={"## Shipping\n- Free shipping over \u20B9499\n- Delivery in 3-7 business days"}
+                  />
+                ) : (
+                  <div className="prose max-w-none border rounded-lg p-3 bg-gray-50" dangerouslySetInnerHTML={{ __html: convertMarkdownToHTML(form.content_shipping_delivery) }} />
+                )}
+                {errors.content_shipping_delivery && <p className="text-red-500 text-sm mt-1">{errors.content_shipping_delivery}</p>}
               </div>
               {/* Enhanced Variants Management */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
