@@ -22,6 +22,7 @@ import {
   Verified
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import { API_BASE_URL } from '@/config/api';
 
 // Vendor type definition based on API response
 interface Vendor {
@@ -168,7 +169,7 @@ const VendorCard: React.FC<VendorCardProps> = ({ vendor }) => {
         {/* Action Buttons */}
         <div className="flex space-x-3">
           <Link 
-            href={`/vendor/${vendor.slug}`}
+            href={`/vendor/store/${vendor.slug}`}
             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-center py-2 px-4 rounded-full font-medium transition-colors duration-200 flex items-center justify-center space-x-2 group"
           >
             <ShoppingBag className="h-4 w-4 group-hover:scale-110 transition-transform" />
@@ -333,7 +334,7 @@ export default function VendorPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('https://backend-server.developer-plantomart.workers.dev/vendor/get-all-vendors');
+      const response = await fetch(`${API_BASE_URL}/vendor/get-all-vendors`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch vendors: ${response.status}`);
