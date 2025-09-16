@@ -3,6 +3,8 @@ import { MinusCircle, PlusCircle, Heart, ShieldCheck, Truck, MapPin, Store, Leaf
 import Link from 'next/link'
 import ProductDataType from '@/types/ProductData'
 import { useState } from 'react'
+import { API_ENDPOINTS } from '@/config/api'
+import { supabase } from '@/utils/supabase/client'
 
 type VendorData = {
   name?: string
@@ -99,6 +101,37 @@ const BuyBox: React.FC<BuyBoxProps> = ({
           if (data.isOk) {
             // Payment successful - 
             alert("Payment successful!");
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              const user_uuid = session?.user?.id;
+              if (!user_uuid) throw new Error('Not authenticated');
+              const vendor_id = (vendorData as any)?.vendor_id || (product as any)?.vendorID;
+              const orderPayload = {
+                user_uuid,
+                vendor_id,
+                items: [
+                  {
+                    product_id: product.product_id,
+                    product_title: product.title,
+                    quantity,
+                    unit_price: pricePerUnit
+                  }
+                ],
+                total_amount: Math.round(pricePerUnit * quantity),
+                currency: 'INR',
+                payment_id: response.razorpay_payment_id,
+                payment_method: 'razorpay',
+                payment_status: 'paid',
+                notes: `Razorpay order: ${response.razorpay_order_id}`
+              };
+              await fetch(API_ENDPOINTS.createOrder, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderPayload)
+              });
+            } catch (e) {
+              console.error('Failed to create order record:', e);
+            }
           } else {
             alert("Payment failed");
           }

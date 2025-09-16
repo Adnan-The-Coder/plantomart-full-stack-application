@@ -72,7 +72,15 @@ export const API_ENDPOINTS = {
         if (typeof query?.limit === 'number') params.set('limit', String(query.limit));
         const qs = params.toString();
         return `${API_BASE_URL}/product/reviews/vendor/${vendorId}${qs ? `?${qs}` : ''}`;
-    }
+    },
+
+    // Orders Endpoints
+    createOrder: `${API_BASE_URL}/order/create`,
+    getOrdersByVendor: (vendorId: string, page = 1, limit = 50) => `${API_BASE_URL}/order/vendor/${vendorId}?page=${page}&limit=${limit}`,
+    getOrdersByUser: (userUUID: string, page = 1, limit = 50) => `${API_BASE_URL}/order/user/${userUUID}?page=${page}&limit=${limit}`,
+    getOrder: (orderId: string) => `${API_BASE_URL}/order/${orderId}`,
+    getOrderItems: (orderId: string) => `${API_BASE_URL}/order/items/${orderId}`,
+    updateOrderStatus: (orderId: string) => `${API_BASE_URL}/order/status/${orderId}`
 
 
 }   

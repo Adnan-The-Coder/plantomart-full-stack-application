@@ -1,35 +1,143 @@
 /* eslint-disable no-unused-vars */
 "use client";
-import { useState } from 'react';
-import { ChevronDown, Edit, Eye, Filter, MoreHorizontal, Search } from 'lucide-react';
-
-interface Order {
-  id: string;
-  customer: string;
-  date: string;
-  total: number;
-  status: string;
-  items: number;
-  payment: string;
-}
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, Edit, Eye, Filter, MoreHorizontal, Search, Loader2, AlertCircle, User2, Clipboard } from 'lucide-react';
+import { API_ENDPOINTS } from '@/config/api';
+import { supabase } from '@/utils/supabase/client';
+import Image from 'next/image';
 
 interface OrdersTabProps {
-  orders: Order[];
+  vendorId?: string;
 }
 
-function OrdersTab({ orders }: OrdersTabProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  // biome-ignore lint/correctness/noUnusedVariables: will see if needed in future
-  const [filterStatus, setFilterStatus] = useState('all');
+type VendorOrder = {
+  order_id: string;
+  user_uuid: string;
+  vendor_id: string;
+  total_amount: number;
+  currency: string;
+  status: string;
+  payment_status?: string;
+  created_at: string;
+};
 
-  // Filter orders based on search term and status
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         order.customer.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || order.status === filterStatus;
-    
-    return matchesSearch && matchesFilter;
-  });
+function OrdersTab({ vendorId: vendorIdProp }: OrdersTabProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [vendorId, setVendorId] = useState<string | undefined>(vendorIdProp || undefined);
+  const [orders, setOrders] = useState<VendorOrder[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [userMap, setUserMap] = useState<Record<string, any>>({});
+  const [detailsModal, setDetailsModal] = useState<{ open: boolean; order?: any; items?: any[]; loading?: boolean; error?: string | null }>({ open: false });
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        let vId = vendorIdProp || vendorId;
+        if (!vId) {
+          const auth:any = supabase.auth;
+          const { data: { session } } = await auth.getSession();
+          const uid = session?.user?.id;
+          if (!uid) throw new Error('Not authenticated');
+          const res = await fetch(API_ENDPOINTS.getAllVendorsAdmin, { headers: { 'Content-Type': 'application/json' } });
+          if (!res.ok) throw new Error('Failed to fetch vendors');
+          const json:any = await res.json();
+          const found = Array.isArray(json.data) ? json.data.find((v: any) => v.user_uuid === uid || v.vendor_id === uid || v.user_id === uid) : null;
+          vId = found?.vendor_id || found?.user_uuid || found?.user_id || undefined;
+          setVendorId(vId);
+        }
+        if (!vId) throw new Error('Vendor not found');
+        const ordRes = await fetch(API_ENDPOINTS.getOrdersByVendor(vId, 1, 100), { headers: { 'Content-Type': 'application/json' } });
+        if (!ordRes.ok) throw new Error('Failed to fetch orders');
+        const ordJson:any = await ordRes.json();
+        if (!ordJson.success) throw new Error(ordJson.message || 'Failed to load orders');
+        const list: VendorOrder[] = ordJson.data || [];
+        setOrders(list);
+        // Preload unique user profiles for display
+        const uuids: string[] = Array.from(
+          new Set(
+            list
+              .map((o: VendorOrder) => o.user_uuid)
+              .filter((u): u is string => typeof u === 'string' && u.length > 0)
+          )
+        );
+        if (uuids.length > 0) {
+          const entries = await Promise.all(
+            uuids.map(async (uuid: string) => {
+              try {
+                const r = await fetch(API_ENDPOINTS.getProfileByUUID(uuid), { headers: { 'Content-Type': 'application/json' } });
+                const j:any = await r.json();
+                if (r.ok && j.success && j.data) return [uuid, j.data] as const;
+              } catch {}
+              return [uuid, null] as const;
+            })
+          );
+          const map: Record<string, any> = {};
+          entries.forEach(([k, v]) => { map[k] = v; });
+          setUserMap(map);
+        }
+      } catch (e:any) {
+        setError(e.message || 'Failed to load orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorIdProp]);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      const user = userMap[order.user_uuid];
+      const name = (user?.full_name || '').toLowerCase();
+      const email = (user?.email || '').toLowerCase();
+      const matchesSearch = order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) || order.user_uuid.toLowerCase().includes(searchTerm.toLowerCase()) || name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
+      const matchesFilter = filterStatus === 'all' || order.status === filterStatus;
+      return matchesSearch && matchesFilter;
+    });
+  }, [orders, searchTerm, filterStatus]);
+
+  const copyToClipboard = (text: string) => {
+    try {
+      void navigator.clipboard.writeText(text);
+    } catch {}
+  };
+
+  const openDetails = async (orderId: string) => {
+    setDetailsModal({ open: true, loading: true });
+    try {
+      const res = await fetch(API_ENDPOINTS.getOrder(orderId), { headers: { 'Content-Type': 'application/json' } });
+      const j:any = await res.json();
+      if (!res.ok || !j.success) throw new Error(j.message || 'Failed to fetch order');
+      setDetailsModal({ open: true, loading: false, order: j.data, items: j.data.items || [] });
+    } catch (e:any) {
+      setDetailsModal({ open: true, loading: false, error: e.message || 'Failed to load order' });
+    }
+  };
+
+  const closeDetails = () => setDetailsModal({ open: false });
+
+  const updateStatus = async (orderId: string, status: string) => {
+    setUpdatingOrderId(orderId);
+    try {
+      const res = await fetch(API_ENDPOINTS.updateOrderStatus(orderId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      const j:any = await res.json();
+      if (!res.ok || !j.success) throw new Error(j.message || 'Failed to update status');
+      setOrders((prev) => prev.map((o) => (o.order_id === orderId ? { ...o, status } : o)));
+    } catch (e:any) {
+      setError(e.message || 'Failed to update order status');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
 
   // Helper function to get status color
   const getStatusColor = (status: string) => {
@@ -82,6 +190,17 @@ function OrdersTab({ orders }: OrdersTabProps) {
           {/* Filter dropdown would go here */}
         </div>
       </div>
+      {loading && (
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-4 size-6 animate-spin text-green-600" />
+          <p className="text-sm text-gray-600">Loading orders...</p>
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 mb-4">
+          <div className="flex items-center gap-2"><AlertCircle className="size-4" /><span>{error}</span></div>
+        </div>
+      )}
       {/* Orders Table */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
@@ -89,10 +208,10 @@ function OrdersTab({ orders }: OrdersTabProps) {
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Order ID
+                  Customer
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Customer
+                  Order ID
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Date
@@ -103,6 +222,9 @@ function OrdersTab({ orders }: OrdersTabProps) {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
                 </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Payment
+                </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                   Actions
                 </th>
@@ -110,31 +232,50 @@ function OrdersTab({ orders }: OrdersTabProps) {
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
+                <tr key={order.order_id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{order.id}</div>
+                    {(() => {
+                      const u = userMap[order.user_uuid];
+                      return (
+                        <div className="flex items-center gap-3">
+                          {u?.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <Image width={200} height={200} src={u.avatar_url} alt={u.full_name || 'Avatar'} className="size-9 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex size-9 items-center justify-center rounded-full bg-gray-100 text-gray-600"><User2 className="size-4" /></div>
+                          )}
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">{u?.full_name || 'Customer'}</div>
+                            <div className="text-xs text-gray-500">{u?.email || order.user_uuid}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="text-sm text-gray-900">{order.customer}</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                      <button type="button" onClick={() => copyToClipboard(order.order_id)} title="Copy Order ID" className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"><Clipboard className="size-4" /></button>
+                      <span>{order.order_id}</span>
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="text-sm text-gray-500">{order.date}</div>
+                    <div className="text-sm text-gray-500">{new Date(order.created_at).toLocaleString()}</div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">₹{order.total}</div>
+                    <div className="text-sm font-medium text-gray-900">₹{order.total_amount}</div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(order.status)}`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
                   </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <div className="text-sm text-gray-700">{order.payment_status || 'pending'}</div>
+                  </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
-                      <button type='button' className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700">
+                      <button type='button' onClick={() => openDetails(order.order_id)} className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700" title="View details">
                         <Eye className="size-4" />
-                      </button>
-                      <button type='button' className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700">
-                        <Edit className="size-4" />
                       </button>
                       <button type='button' className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-red-700">
                         <MoreHorizontal className="size-4" />
@@ -147,6 +288,72 @@ function OrdersTab({ orders }: OrdersTabProps) {
           </table>
         </div>
       </div>
+
+      {detailsModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-5 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Order Details</h3>
+              <button type="button" onClick={() => (setDetailsModal({ open: false }))} className="text-gray-500 hover:text-gray-700">Close</button>
+            </div>
+            {detailsModal.loading && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="size-6 animate-spin text-green-600" />
+              </div>
+            )}
+            {detailsModal.error && (
+              <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{detailsModal.error}</div>
+            )}
+            {detailsModal.order && (
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <div className="text-gray-600">Order ID</div>
+                    <div className="font-medium text-gray-900">{detailsModal.order.order_id}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-600">Placed On</div>
+                    <div className="font-medium text-gray-900">{new Date(detailsModal.order.created_at).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-600">Total</div>
+                    <div className="font-medium text-gray-900">₹{detailsModal.order.total_amount}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-600">Status</div>
+                    <div className="font-medium text-gray-900">{detailsModal.order.status}</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-2 text-sm font-semibold text-gray-900">Items</div>
+                  <div className="overflow-hidden rounded border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Product</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Qty</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Price</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {detailsModal.items?.map((it, idx) => (
+                          <tr key={idx}>
+                            <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900">{it.product_title || it.product_id}</td>
+                            <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-700">{it.quantity}</td>
+                            <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-700">₹{it.unit_price}</td>
+                            <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900">₹{it.total_price}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
