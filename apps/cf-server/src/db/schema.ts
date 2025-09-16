@@ -393,3 +393,59 @@ export const productReviews = sqliteTable("productReviews", {
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
 });
+
+
+// Orders tables
+export const orders = sqliteTable("orders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+
+  order_id: text("order_id").notNull().unique(),
+
+  user_uuid: text("user_uuid")
+    .notNull()
+    .references(() => userProfiles.uuid, { onDelete: "cascade", onUpdate: "cascade" }),
+
+  vendor_id: text("vendor_id")
+    .notNull()
+    .references(() => vendorProfiles.vendor_id, { onDelete: "cascade", onUpdate: "cascade" }),
+
+  total_amount: real("total_amount").notNull(),
+  currency: text("currency").notNull().default("INR"),
+
+  status: text("status").notNull().default("pending"),
+  /**
+   * Status examples: pending, paid, processing, shipped, delivered, cancelled, refunded
+   */
+
+  payment_id: text("payment_id"),
+  payment_method: text("payment_method"),
+  payment_status: text("payment_status").default("pending"),
+
+  shipping_address: text("shipping_address"),
+  billing_address: text("billing_address"),
+
+  notes: text("notes"),
+
+  created_at: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updated_at: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const orderItems = sqliteTable("orderItems", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+
+  order_id: text("order_id")
+    .notNull()
+    .references(() => orders.order_id, { onDelete: "cascade", onUpdate: "cascade" }),
+
+  product_id: text("product_id")
+    .notNull()
+    .references(() => products.product_id, { onDelete: "cascade", onUpdate: "cascade" }),
+
+  product_title: text("product_title"),
+
+  quantity: integer("quantity").notNull(),
+  unit_price: real("unit_price").notNull(),
+  total_price: real("total_price").notNull(),
+
+  created_at: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
