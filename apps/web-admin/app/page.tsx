@@ -1,18 +1,12 @@
 "use client";
 import React, { useState } from 'react';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  LineChart,
+  BarChart, Bar, 
+  XAxis, YAxis, 
+  CartesianGrid, Tooltip, 
+  ResponsiveContainer,LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell
+  PieChart,Pie,Cell
 } from 'recharts';
 import {
   Users,
@@ -40,6 +34,7 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import UserContent from '@/components/user-content';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -71,11 +66,6 @@ const AdminDashboard = () => {
       { id: '#12345', customer: 'John Doe', vendor: 'Green Garden Co.', amount: '$156.99', status: 'completed', date: '2024-01-15' },
       { id: '#12346', customer: 'Jane Smith', vendor: 'Plant Paradise', amount: '$89.50', status: 'processing', date: '2024-01-15' },
       { id: '#12347', customer: 'Mike Johnson', vendor: 'Urban Jungle', amount: '$234.75', status: 'shipped', date: '2024-01-14' },
-    ],
-    users: [
-      { id: 1, name: 'Alice Cooper', email: 'alice@example.com', joined: '2024-01-10', orders: 15, status: 'active' },
-      { id: 2, name: 'Bob Martinez', email: 'bob@example.com', joined: '2024-01-08', orders: 8, status: 'active' },
-      { id: 3, name: 'Carol Davis', email: 'carol@example.com', joined: '2024-01-05', orders: 23, status: 'inactive' },
     ],
     blogs: [
       { id: 1, title: 'Top 10 Indoor Plants for Beginners', author: 'Admin', date: '2024-01-15', status: 'published', views: 1243 },
@@ -113,33 +103,26 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const getStatusBadge = (
-    status: string
-  ) => {
-    const statusConfig = {
-      active: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
-      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
-      suspended: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },
-      completed: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
-      processing: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Clock },
-      shipped: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: Package },
-      published: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
-      draft: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: Edit },
-      inactive: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: XCircle },
-    };
-
-    const config =
-      status in statusConfig
-        ? statusConfig[status as keyof typeof statusConfig]
-        : statusConfig.pending;
+  const statusConfig = {
+    active: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+    pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
+    suspended: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },
+    completed: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+    processing: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Clock },
+    shipped: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: Package },
+    published: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+    draft: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: Edit },
+    inactive: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: XCircle },
+  };
+  type StatusKey = keyof typeof statusConfig;
+  const getStatusBadge = (status: StatusKey | string) => {
+    const config = (status in statusConfig ? statusConfig[status as StatusKey] : statusConfig.pending);
     const Icon = config.icon;
 
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
         <Icon className="h-3 w-3" />
-        {typeof status === 'string'
-          ? status.charAt(0).toUpperCase() + status.slice(1)
-          : String(status)}
+        {typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : String(status)}
       </span>
     );
   };
@@ -349,19 +332,7 @@ const AdminDashboard = () => {
           Plus
         );
       case 'users':
-        return renderTable(
-          tableData.users,
-          [
-            { key: 'name', label: 'User' },
-            { key: 'email', label: 'Email' },
-            { key: 'joined', label: 'Joined' },
-            { key: 'orders', label: 'Orders' },
-            { key: 'status', label: 'Status' }
-          ],
-          'User Management',
-          'Export Users',
-          Download
-        );
+        return <UserContent/>;
       case 'orders':
         return renderTable(
           tableData.orders,
