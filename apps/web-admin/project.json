@@ -1,0 +1,25 @@
+{
+  "name": "web-admin",
+  "sourceRoot": "apps/web-admin/src",
+  "projectType": "application",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter web-admin dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter web-admin build"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter web-admin lint"
+      }
+    }
+  }
+}
