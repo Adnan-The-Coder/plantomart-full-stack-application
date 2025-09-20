@@ -54,6 +54,9 @@ jobs:
       - name: Install wrangler in cf-server
         run: pnpm add wrangler@4.32.0 --workspace-root
 
+      - name: Install wrangler CLI
+        run: pnpm add -g wrangler
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
