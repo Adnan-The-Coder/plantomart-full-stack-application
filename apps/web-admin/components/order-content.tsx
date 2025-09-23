@@ -21,7 +21,7 @@ type Vendor = {
 
 type Order = {
   id: string;
-  order_number: string;
+  order_id: string;
   user_uuid: string;
   vendor_id: string;
   total_amount: number;
@@ -78,6 +78,7 @@ const OrdersContent = () => {
         throw new Error(`Failed to fetch orders for vendor ${vendorId}`);
       const data: any = await res.json();
       const ordersArray = data.data || [];
+      console.log("Orders Array: ", ordersArray);
       setOrdersByVendor((prev) => ({
         ...prev,
         [vendorId]: ordersArray,
@@ -175,7 +176,7 @@ const OrdersContent = () => {
                         className="border-b hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
                         <td className="px-6 py-4 font-mono">
-                          {order.order_number}
+                          {order.order_id}
                         </td>
                         <td className="px-6 py-4">{order.user_uuid}</td>
                         <td className="px-6 py-4 font-medium">
@@ -224,7 +225,7 @@ const OrdersContent = () => {
             <div className="p-6 space-y-4">
               <div className="flex justify-between">
                 <span className="font-medium">Order #</span>
-                <span>{selectedOrder.order_number}</span>
+                <span>{selectedOrder.order_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Total</span>
