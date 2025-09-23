@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { API_ENDPOINTS } from "@/config/api";
+import Image from "next/image";
 
 // Enhanced Types based on schema
 type UserProfile = {
@@ -131,28 +132,43 @@ const OrdersContent = () => {
 
   // Fetch orders for a vendor
   const fetchOrdersForVendor = async (vendorId: string) => {
-    try {
-      const res = await fetch(API_ENDPOINTS.getOrdersByVendor(vendorId, 1, 100));
-      if (!res.ok) {
-        throw new Error(`Failed to fetch orders for vendor ${vendorId}`);
-      }
-      const data:any = await res.json();
-      const ordersArray: Order[] = data.data || [];
-      
-      // Enhance orders with user data
-      const ordersWithUsers: OrderWithUser[] = ordersArray.map(order => ({
-        ...order,
-        user: userProfiles[order.user_uuid]
-      }));
+  try {
+    const res = await fetch(API_ENDPOINTS.getOrdersByVendor(vendorId, 1, 100));
+    if (!res.ok) throw new Error(`Failed to fetch orders for vendor ${vendorId}`);
+    const data: any = await res.json();
+    const ordersArray: Order[] = data.data || [];
 
-      setOrdersByVendor((prev) => ({
-        ...prev,
-        [vendorId]: ordersWithUsers,
-      }));
-    } catch (err: any) {
-      console.error(`Error fetching orders for vendor ${vendorId}:`, err);
-    }
-  };
+    const ordersWithUsers: OrderWithUser[] = await Promise.all(
+      ordersArray.map(async (order) => {
+        let user = userProfiles[order.user_uuid];
+
+        if (!user) {
+          // fallback: fetch user individually if not preloaded
+          try {
+            const uRes = await fetch(API_ENDPOINTS.getProfileByUUID(order.user_uuid));
+            if (uRes.ok) {
+              const uData: any = await uRes.json();
+              user = uData.data;
+              setUserProfiles((prev) => ({ ...prev, [order.user_uuid]: user }));
+            }
+          } catch (err) {
+            console.error(`Failed to fetch user ${order.user_uuid}`, err);
+          }
+        }
+
+        return { ...order, user };
+      })
+    );
+
+    setOrdersByVendor((prev) => ({
+      ...prev,
+      [vendorId]: ordersWithUsers,
+    }));
+  } catch (err) {
+    console.error(`Error fetching orders for vendor ${vendorId}:`, err);
+  }
+};
+
 
   // Fetch order details
   const fetchOrderDetails = async (order: OrderWithUser) => {
@@ -172,33 +188,29 @@ const OrdersContent = () => {
 
   // Refresh data
   const refreshData = async () => {
-    await fetchUserProfiles();
+    setError(null);
     await fetchVendors();
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      await fetchUserProfiles();
+  const init = async () => {
+    try {
+      // Step 1: Prefetch vendors first
       await fetchVendors();
-    };
-    loadData();
-  }, []);
 
-  // Update orders when user profiles change
-  useEffect(() => {
-    if (Object.keys(userProfiles).length > 0) {
-      setOrdersByVendor(prev => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach(vendorId => {
-          updated[vendorId] = updated[vendorId].map(order => ({
-            ...order,
-            user: userProfiles[order.user_uuid]
-          }));
-        });
-        return updated;
-      });
+      // Step 2: Prefetch *active* user profiles (optional optimization)
+      await fetchUserProfiles();
+    } catch (err) {
+      console.error("Init failed:", err);
     }
-  }, [userProfiles]);
+  };
+  init();
+}, []);
+
+
+
+  // Remove the useEffect for updating orders when user profiles change
+  // as we now fetch user profiles on-demand
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { color: string; icon: any }> = {
@@ -268,7 +280,9 @@ const OrdersContent = () => {
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
           {user.avatar_url ? (
-            <img 
+            <Image
+              width={200}  
+              height={200}
               src={user.avatar_url} 
               alt={user.full_name}
               className="w-full h-full object-cover"
@@ -444,7 +458,7 @@ const OrdersContent = () => {
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
                       {ordersByVendor[vendor.vendor_id].map((order) => (
                         <tr
-                          key={order.id}
+                          key={order.order_id}
                           className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
