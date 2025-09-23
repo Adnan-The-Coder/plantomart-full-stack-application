@@ -42,6 +42,53 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+   // 🔐 New auth state
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const correctPassword = ">5234"; 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === correctPassword) {
+      setAuthenticated(true);
+      setError("");
+    } else {
+      setError("Incorrect password. Try again.");
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <form
+          onSubmit={handleLogin}
+          className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 w-full max-w-sm"
+        >
+          <h2 className="text-2xl font-bold mb-4 text-center text-gray-900 dark:text-white">
+            Admin Access
+          </h2>
+          <input
+            type="password"
+            placeholder="Enter Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+          />
+          {error && (
+            <p className="text-red-500 text-sm mb-2">{error}</p>
+          )}
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            Enter Dashboard
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   // Sample data
   const salesData = [
     { month: 'Jan', sales: 45000 },
