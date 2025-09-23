@@ -52,6 +52,7 @@ app.use('*', cors({
       "http://localhost:3000",
       "https://web.plantomart.workers.dev",
       "https://plantomart.com",
+      "https://admin.plantomart.com",
     ];
     return !origin || allowedOrigins.includes(origin) ? (origin || "*") : "";
   },

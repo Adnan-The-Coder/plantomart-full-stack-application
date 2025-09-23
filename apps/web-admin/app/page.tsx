@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import UserContent from '@/components/user-content';
 import VendorContent from '@/components/vendor-content';
+import OrdersContent from '@/components/order-content';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -323,20 +324,7 @@ const AdminDashboard = () => {
       case 'users':
         return <UserContent/>;
       case 'orders':
-        return renderTable(
-          tableData.orders,
-          [
-            { key: 'id', label: 'Order ID' },
-            { key: 'customer', label: 'Customer' },
-            { key: 'vendor', label: 'Vendor' },
-            { key: 'amount', label: 'Amount' },
-            { key: 'status', label: 'Status' },
-            { key: 'date', label: 'Date' }
-          ],
-          'Order Management',
-          'Export Orders',
-          Download
-        );
+        return <OrdersContent/>
       case 'blogs':
         return renderTable(
           tableData.blogs,
