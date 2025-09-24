@@ -1,5 +1,6 @@
 import Head from "next/head";
 import "./globals.css";
+import ContactButtons from "@/components/whatsapp-button";
 
 export const metadata = {
   title: "Plantomart | Eco-Friendly Plants & Sustainable Living Essentials",
@@ -93,7 +94,11 @@ export default function PlantomartLayout({
           <meta name="twitter:description" content={metadata.twitter.description} />
           <meta name="twitter:image" content={metadata.twitter.image} />
         </Head>
-        <div>{children}</div>
+        <main className="relative z-10 overflow-hidden">{children}</main>
+        <ContactButtons />
+        <div>
+          {children}
+        </div>
       </body>
     </html>
   );
