@@ -94,7 +94,6 @@ export default function PlantomartLayout({
           <meta name="twitter:description" content={metadata.twitter.description} />
           <meta name="twitter:image" content={metadata.twitter.image} />
         </Head>
-        <main className="relative z-10 overflow-hidden">{children}</main>
         <ContactButtons />
         <div>
           {children}
