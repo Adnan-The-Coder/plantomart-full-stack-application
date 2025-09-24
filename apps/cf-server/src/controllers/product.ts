@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, or, gte, lte, sql } from 'drizzle-orm';
+import { eq, desc, and, or, gte, lte, sql } from 'drizzle-orm';
 import { products, productVariants, productVariantGroups } from '../db/schema';
 // Simple ID generator for variants (since nanoid might not be available)
 const generateVariantId = () => {
@@ -553,10 +553,16 @@ export const getProductById = async (c: Context) => {
 export const getFeaturedProducts = async (c: Context) => {
   try {
     const db = drizzle(c.env.DB);
+    
+    // Get limit from query parameters, default to 4, max 20
+    const limit = Math.min(parseInt(c.req.query('limit') || '4'), 20);
+    
     const featuredProducts = await db
       .select()
       .from(products)
       .where(eq(products.featured, true))
+      .limit(limit)
+      .orderBy(desc(products.createdAt)) // Get most recent featured products
       .all();
 
     return c.json({
