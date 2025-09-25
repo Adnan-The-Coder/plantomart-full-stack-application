@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
 import { API_ENDPOINTS } from '@/config/api';
+import { updateCartQuantity, removeFromCart, addWishlistItemToCart, removeFromWishlist, addToWishlist, safeLocalStorage } from '@/helpers/cart-and-wishlist/CRUD-Wishlist-and-Cart';
 
 // Utility for localStorage with expiry
 const setWithExpiry = (key: string, value: any, ttl: number) => {
@@ -13,7 +14,7 @@ const setWithExpiry = (key: string, value: any, ttl: number) => {
     value,
     expiry: now.getTime() + ttl,
   };
-  localStorage.setItem(key, JSON.stringify(item));
+  safeLocalStorage(key, item);
 };
 
 const getWithExpiry = (key: string) => {
@@ -147,29 +148,40 @@ function Featured() {
     }
     
     // Cart/wishlist initialization
-    const storedCart = localStorage.getItem('plantomartCart');
-    const storedWishlist = localStorage.getItem('plantomartWishlist');
-    if (storedCart) {
-      try { setCartItems(JSON.parse(storedCart)); } catch { localStorage.removeItem('plantomartCart'); }
+    try {
+      const storedCart = localStorage.getItem('plantomartCart');
+      if (storedCart) {
+        setCartItems(JSON.parse(storedCart));
+      }
+    } catch (error) {
+      console.error('Error loading cart:', error);
+      // Don't remove the cart data, as it might be a temporary error
     }
-    if (storedWishlist) {
-      try { setWishlistItems(JSON.parse(storedWishlist)); } catch { localStorage.removeItem('plantomartWishlist'); }
+    
+    try {
+      const storedWishlist = localStorage.getItem('plantomartWishlist');
+      if (storedWishlist) {
+        setWishlistItems(JSON.parse(storedWishlist));
+      }
+    } catch (error) {
+      console.error('Error loading wishlist:', error);
+      // Don't remove the wishlist data, as it might be a temporary error
     }
   }, []);
 
-  // Update localStorage when cart changes
+  // Cart and wishlist are now managed by the helper functions
+  // No need to manually update localStorage here, as the helper functions handle it
+  // We only need to dispatch events for other components to listen to
   useEffect(() => {
     if (isClient && cartItems.length >= 0) {
-      localStorage.setItem('plantomartCart', JSON.stringify(cartItems));
       const event = new CustomEvent('cartUpdated', { detail: cartItems });
       window.dispatchEvent(event);
     }
   }, [cartItems, isClient]);
 
-  // Update localStorage when wishlist changes
+  // Update events when wishlist changes
   useEffect(() => {
     if (isClient && wishlistItems.length >= 0) {
-      localStorage.setItem('plantomartWishlist', JSON.stringify(wishlistItems));
       const event = new CustomEvent('wishlistUpdated', { detail: wishlistItems });
       window.dispatchEvent(event);
     }
@@ -184,12 +196,15 @@ function Featured() {
       setCartItems(prevItems => {
         const existingItemIndex = prevItems.findIndex(item => item.product_id === product.product_id);
         if (existingItemIndex >= 0) {
-          const newItems = prevItems.filter(item => item.product_id !== product.product_id);
+          // Remove from cart using helper function
+          const newItems = removeFromCart(prevItems, product.product_id);
           setTimeout(() => toast.success(`${product.title} removed from cart`), 0);
           return newItems;
         } else {
-          const newItem: CartItem = { ...product, quantity: 1 };
-          const newItems = [...prevItems, newItem];
+          // Add to cart using a modified version of addWishlistItemToCart
+          // Since we're not adding from wishlist, we create a cart item first
+          const cartItem = { ...product, quantity: 1 };
+          const newItems = addWishlistItemToCart(prevItems, cartItem);
           setTimeout(() => toast.success(`${product.title} added to cart`), 0);
           return newItems;
         }
@@ -204,11 +219,13 @@ function Featured() {
       setWishlistItems(prevItems => {
         const existingItemIndex = prevItems.findIndex(item => item.product_id === product.product_id);
         if (existingItemIndex >= 0) {
-          const newItems = prevItems.filter(item => item.product_id !== product.product_id);
+          // Remove from wishlist using helper function
+          const newItems = removeFromWishlist(prevItems, product.product_id);
           setTimeout(() => toast.success(`${product.title} removed from wishlist`), 0);
           return newItems;
         } else {
-          const newItems = [...prevItems, product];
+          // Add to wishlist using the new helper function
+          const newItems = addToWishlist(prevItems, product);
           setTimeout(() => toast.success(`${product.title} added to wishlist`), 0);
           return newItems;
         }

@@ -29,9 +29,10 @@ import {
 
 // Your existing imports
 import { supabase } from '../utils/supabase/client';
-import { API_ENDPOINTS } from '@/config/api';
 import SignIn from './auth/Sign-in';
 import fetchUserProfile from '@/helpers/fetchUserProfile';
+import loadCartAndWishlist from '@/helpers/cart-and-wishlist/loadCartAndWishlist';
+import { updateCartQuantity, removeFromCart, addWishlistItemToCart, removeFromWishlist } from '@/helpers/cart-and-wishlist/CRUD-Wishlist-and-Cart';
 
 // Navigation data structure
 const navigationData = {
@@ -104,7 +105,7 @@ function Navbar() {
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [activeCategoryDropdown, setActiveCategoryDropdown] = useState<string | null>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[] >([]);
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,14 +168,34 @@ function Navbar() {
   // Initialize client-side data
   useEffect(() => {
     setIsClient(true);
-    loadCartAndWishlist();
+    const { cartItems: initialCartItems, wishlistItems: initialWishlistItems } = loadCartAndWishlist();
+    setCartItems(initialCartItems);
+    setWishlistItems(initialWishlistItems);
     checkUserSession();
 
-    const handleCartUpdate = () => loadCartAndWishlist();
-    const handleWishlistUpdate = () => loadCartAndWishlist();
+    const handleCartUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        setCartItems(event.detail);
+      } else {
+        const { cartItems: updatedCartItems } = loadCartAndWishlist();
+        setCartItems(updatedCartItems);
+      }
+    };
+    
+    const handleWishlistUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        setWishlistItems(event.detail);
+      } else {
+        const { wishlistItems: updatedWishlistItems } = loadCartAndWishlist();
+        setWishlistItems(updatedWishlistItems);
+      }
+    };
+    
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'plantomartCart' || event.key === 'plantomartWishlist') {
-        loadCartAndWishlist();
+        const { cartItems: updatedCartItems, wishlistItems: updatedWishlistItems } = loadCartAndWishlist();
+        setCartItems(updatedCartItems);
+        setWishlistItems(updatedWishlistItems);
       }
     };
 
@@ -213,31 +234,6 @@ function Navbar() {
     await supabase.auth.signOut();
     setUser(null);
     setIsUserMenuOpen(false);
-  };
-
-  const loadCartAndWishlist = () => {
-    if (typeof window !== 'undefined') {
-      const storedCart = localStorage.getItem('plantomartCart');
-      const storedWishlist = localStorage.getItem('plantomartWishlist');
-      
-      if (storedCart) {
-        try {
-          setCartItems(JSON.parse(storedCart));
-        } catch (e) {
-          console.error("Failed to parse cart data:", e);
-          setCartItems([]);
-        }
-      }
-      
-      if (storedWishlist) {
-        try {
-          setWishlistItems(JSON.parse(storedWishlist));
-        } catch (e) {
-          console.error("Failed to parse wishlist data:", e);
-          setWishlistItems([]);
-        }
-      }
-    }
   };
 
   // Enhanced click outside handler
@@ -317,58 +313,25 @@ function Navbar() {
     return cartItems.reduce((total, item) => total + (item.numericPrice * item.quantity), 0);
   };
 
-  const updateCartQuantity = (id:any, newQuantity:any) => {
-    if (newQuantity <= 0) return;
-    const updatedCart = cartItems.map(item => 
-      item.id === id ? { ...item, quantity: newQuantity } : item
-    );
-    setCartItems(updatedCart);
-    localStorage.setItem('plantomartCart', JSON.stringify(updatedCart));
-    
-    const event = new CustomEvent('cartUpdated', { detail: updatedCart });
-    window.dispatchEvent(event);
-  };
-
-  const removeFromCart = (id:any) => {
-    const updatedCart = cartItems.filter(item => item.id !== id);
-    setCartItems(updatedCart);
-    localStorage.setItem('plantomartCart', JSON.stringify(updatedCart));
-    
-    const event = new CustomEvent('cartUpdated', { detail: updatedCart });
-    window.dispatchEvent(event);
-  };
-
-  const removeFromWishlist = (id:any) => {
-    const updatedWishlist = wishlistItems.filter(item => item.id !== id);
-    setWishlistItems(updatedWishlist);
-    localStorage.setItem('plantomartWishlist', JSON.stringify(updatedWishlist));
-    
-    const event = new CustomEvent('wishlistUpdated', { detail: updatedWishlist });
-    window.dispatchEvent(event);
-  };
-
-  const addWishlistItemToCart = (product:any) => {
-    const existingItemIndex = cartItems.findIndex(item => item.id === product.id);
-    
-    let updatedCart;
-    if (existingItemIndex >= 0) {
-      updatedCart = cartItems.map(item => 
-        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-      );
-    } else {
-      const newItem = { ...product, quantity: 1 };
-      updatedCart = [...cartItems, newItem];
-    }
-    
-    setCartItems(updatedCart);
-    localStorage.setItem('plantomartCart', JSON.stringify(updatedCart));
-    
-    const event = new CustomEvent('cartUpdated', { detail: updatedCart });
-    window.dispatchEvent(event);
-  };
-
   const displayCount = (count:any) => {
     return count > 9 ? "9+" : count.toString();
+  };
+  
+  // Handlers for cart and wishlist operations using the helper functions
+  const handleUpdateCartQuantity = (id: string, newQuantity: number) => {
+    setCartItems(prevItems => updateCartQuantity(prevItems, id, newQuantity));
+  };
+  
+  const handleRemoveFromCart = (id: string) => {
+    setCartItems(prevItems => removeFromCart(prevItems, id));
+  };
+  
+  const handleAddWishlistItemToCart = (item: any) => {
+    setCartItems(prevItems => addWishlistItemToCart(prevItems, item));
+  };
+  
+  const handleRemoveFromWishlist = (id: string) => {
+    setWishlistItems(prevItems => removeFromWishlist(prevItems, id));
   };
 
   // Smart dropdown positioning function
@@ -1206,7 +1169,7 @@ function Navbar() {
                       <p className="text-green-600 font-bold text-lg">{item.price}</p>
                       <div className="flex items-center space-x-3 mt-3">
                         <button 
-                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                          onClick={() => handleUpdateCartQuantity(item.id, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           className="w-10 h-10 bg-white border-2 border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -1214,7 +1177,7 @@ function Navbar() {
                         </button>
                         <span className="w-12 text-center text-lg font-bold">{item.quantity}</span>
                         <button 
-                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                          onClick={() => handleUpdateCartQuantity(item.id, item.quantity + 1)}
                           className="w-10 h-10 bg-white border-2 border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
                         >
                           <Plus className="w-4 h-4" />
@@ -1222,7 +1185,7 @@ function Navbar() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => handleRemoveFromCart(item.id)}
                       className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors duration-200"
                       aria-label={`Remove ${item.title} from cart`}
                     >
@@ -1295,14 +1258,14 @@ function Navbar() {
                     <h4 className="font-semibold text-gray-900 text-sm leading-tight mb-1">{item.title}</h4>
                     <p className="text-green-600 font-bold text-lg mb-3">{item.price}</p>
                     <button 
-                      onClick={() => addWishlistItemToCart(item)}
+                      onClick={() => handleAddWishlistItemToCart(item)}
                       className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold shadow-md transform hover:scale-105"
                     >
                       Add to Cart
                     </button>
                   </div>
                   <button 
-                    onClick={() => removeFromWishlist(item.id)}
+                    onClick={() => handleRemoveFromWishlist(item.id)}
                     className="p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-xl transition-colors duration-200"
                     aria-label={`Remove ${item.title} from wishlist`}
                   >
