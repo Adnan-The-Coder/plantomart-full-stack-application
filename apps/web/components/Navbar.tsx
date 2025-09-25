@@ -1,22 +1,86 @@
-/* eslint-disable tailwindcss/migration-from-tailwind-2 */
+// components/Navbar.js - Ultra-Responsive Navbar with Fixed Positioning
 "use client";
-import { useEffect, useState } from 'react';
-import { ShoppingCart, User, Search, Truck, Heart, X, Menu, ChevronDown, ChevronRight, Phone, Minus, Plus, LogOut } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { 
+  ShoppingCart, 
+  User, 
+  Search, 
+  Truck, 
+  Heart, 
+  X, 
+  Menu, 
+  ChevronDown, 
+  Phone, 
+  LogOut,
+  Home,
+  Store,
+  BookOpen,
+  Building2,
+  MessageCircle,
+  Leaf,
+  Package,
+  Shovel,
+  Minus,
+  Plus,
+  ArrowRight
+} from "lucide-react";
 
+// Your existing imports
 import { supabase } from '../utils/supabase/client';
 import { API_ENDPOINTS } from '@/config/api';
-
 import SignIn from './auth/Sign-in';
+import fetchUserProfile from '@/helpers/fetchUserProfile';
 
-// Define types for our products and cart/wishlist items
+// Navigation data structure
+const navigationData = {
+  vendors: [
+    { name: 'Show Bageecha', href: '/vendors/show-bageecha' },
+    { name: 'Super Saaf', href: '/vendors/super-saaf' },
+    { name: 'Leaf Grid', href: '/vendors/leaf-grid' },
+    { name: 'Plantify', href: '/vendors/plantify' },
+    { name: 'Surface Gauge', href: '#', disabled: true, comingSoon: true }
+  ],
+  vendorActions: [
+    { name: 'Browse Vendors', href: '/vendors', icon: Store },
+    { name: 'Start Selling', href: '/vendor/register', icon: Package },
+    { name: 'Help & Guides', href: '/guides', icon: BookOpen },
+    { name: 'My Seller Hub', href: '/vendor/dashboard', icon: Building2 }
+  ],
+  blog: [
+    { name: 'Green Living', href: '/blog/green-living' },
+    { name: 'Plant Care 101', href: '/blog/plant-care-101' },
+    { name: 'Indoor Jungle', href: '/blog/indoor-jungle' },
+    { name: 'Seasonal Gardening', href: '/blog/seasonal-gardening' }
+  ],
+  company: [
+    { name: 'About Us', href: '/about' },
+    { name: 'FAQ', href: '/faq' },
+    { name: 'Privacy Policy', href: '/privacy' },
+    { name: 'Terms of Service', href: '/terms' }
+  ],
+  categories: {
+    plants: [
+      'Spider plant', 'ZZ Plant', 'Lucky Bonsai', 'Golden Yellow Sanseveria',
+    ],
+    planters: [
+      'Amalfi Pots', 'Empresso Pots', 'Grandeur pots', 'Imperia Pots',
+    ],
+    gardeningKits: [
+      'Starter Kits', 'Herb Garden Kits', 'Vegetable Garden Kits', 'Succulent Kits',
+      'Seed Starting Kits', 'Tool Sets', 'Fertilizer Kits', 'Watering Kits'
+    ]
+  }
+};
+
+// Interfaces
 interface Product {
   id: string;
   title: string;
   price: string;
   image: string;
-  tag: string;
+  tag?: string;
   numericPrice: number;
 }
 
@@ -32,35 +96,96 @@ interface UserProfile {
 }
 
 function Navbar() {
+  // State management
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMobileVendorOpen, setIsMobileVendorOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [activeCategoryDropdown, setActiveCategoryDropdown] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
-  const [isClient, setIsClient] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  
-  // Initialize state from localStorage on component mount and check auth status
-  // biome-ignore lint/correctness/useExhaustiveDependencies: will reafactor later
+  const [windowWidth, setWindowWidth] = useState(0);
+
+  const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const categoryDropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const navbarRef = useRef(null);
+
+  // Handle window resize for proper dropdown positioning
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      // Close dropdowns on resize to prevent positioning issues
+      setActiveDropdown(null);
+      setActiveCategoryDropdown(null);
+    };
+
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
+  // Enhanced scroll handler
+  useEffect(() => {
+    let timeoutId:any = null;
+    
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 10;
+      if (scrolled !== isScrolled) {
+        setIsScrolled(scrolled);
+      }
+    };
+    
+    const throttledScroll = () => {
+      if (timeoutId === null) {
+        timeoutId = requestAnimationFrame(() => {
+          handleScroll();
+          timeoutId = null;
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', throttledScroll, { passive: true });
+      return () => {
+        window.removeEventListener('scroll', throttledScroll);
+        if (timeoutId !== null) {
+          cancelAnimationFrame(timeoutId);
+        }
+      };
+    }
+  }, [isScrolled]);
+
+  // Initialize client-side data
   useEffect(() => {
     setIsClient(true);
     loadCartAndWishlist();
     checkUserSession();
 
-    // Add event listeners for cart and wishlist updates
-    window.addEventListener('cartUpdated', loadCartAndWishlist);
-    window.addEventListener('wishlistUpdated', loadCartAndWishlist);
+    const handleCartUpdate = () => loadCartAndWishlist();
+    const handleWishlistUpdate = () => loadCartAndWishlist();
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'plantomartCart' || event.key === 'plantomartWishlist') {
+        loadCartAndWishlist();
+      }
+    };
+
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    window.addEventListener('wishlistUpdated', handleWishlistUpdate);
     window.addEventListener('storage', handleStorageChange);
     
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (session) {
-          fetchUserProfile(session.user.id);
+          fetchUserProfile(session.user.id).then(profile => setUser(profile));
         } else {
           setUser(null);
         }
@@ -68,415 +193,542 @@ function Navbar() {
     );
     
     return () => {
-      window.removeEventListener('cartUpdated', loadCartAndWishlist);
-      window.removeEventListener('wishlistUpdated', loadCartAndWishlist);
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+      window.removeEventListener('wishlistUpdated', handleWishlistUpdate);
       window.removeEventListener('storage', handleStorageChange);
       subscription.unsubscribe();
     };
   }, []);
 
-  // Check if user is already logged in
+  // Your existing functions
   const checkUserSession = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      fetchUserProfile(session.user.id);
+      const profile = await fetchUserProfile(session.user.id);
+      setUser(profile);
     }
   };
 
-  // Fetch user profile data
-  const fetchUserProfile = async (userId: string) => {
-    console.log('Fetching user profile for ID:', userId);
-    try {
-      // Use the backend API instead of direct Supabase query
-      const res = await fetch(API_ENDPOINTS.getProfileByUUID(userId), {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      if (!res.ok) {
-        console.error('Error fetching user profile:', res.status, res.statusText);
-        // If profile doesn't exist yet, create a basic one from auth data
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUser({
-            id: user.id,
-            email: user.email || '',
-            full_name: user.user_metadata?.full_name,
-            avatar_url: user.user_metadata?.avatar_url || user.identities?.[0]?.identity_data?.avatar_url
-          });
-        }
-        return;
-      }
-      
-      const json:any = await res.json();
-      if (!json.success || !json.data) {
-        console.error('Error fetching user profile:', json.message);
-        // Fallback to auth data
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUser({
-            id: user.id,
-            email: user.email || '',
-            full_name: user.user_metadata?.full_name,
-            avatar_url: user.user_metadata?.avatar_url || user.identities?.[0]?.identity_data?.avatar_url
-          });
-        }
-        return;
-      }
-      
-      // Set user data from backend response
-      setUser({
-        id: json.data.id || json.data.user_uuid || userId,
-        email: json.data.email || '',
-        full_name: json.data.full_name || json.data.name,
-        avatar_url: json.data.avatar_url || json.data.profile_image
-      });
-      
-    } catch (err: any) {
-      console.error('Error fetching user profile:', err);
-      // Fallback to auth data
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser({
-          id: user.id,
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name,
-          avatar_url: user.user_metadata?.avatar_url || user.identities?.[0]?.identity_data?.avatar_url
-        });
-      }
-    }
-  };
-
-  // Handle sign out
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setIsUserMenuOpen(false);
   };
 
-  // Handle localStorage changes from other tabs/windows
-  const handleStorageChange = (event: StorageEvent) => {
-    if (event.key === 'plantomartCart' || event.key === 'plantomartWishlist') {
-      loadCartAndWishlist();
-    }
-  };
-
-  // Load cart and wishlist data from localStorage
   const loadCartAndWishlist = () => {
-    const storedCart = localStorage.getItem('plantomartCart');
-    const storedWishlist = localStorage.getItem('plantomartWishlist');
-    
-    if (storedCart) {
-      try {
-        setCartItems(JSON.parse(storedCart));
-      } catch (e) {
-        console.error("Failed to parse cart data:", e);
-        setCartItems([]);
+    if (typeof window !== 'undefined') {
+      const storedCart = localStorage.getItem('plantomartCart');
+      const storedWishlist = localStorage.getItem('plantomartWishlist');
+      
+      if (storedCart) {
+        try {
+          setCartItems(JSON.parse(storedCart));
+        } catch (e) {
+          console.error("Failed to parse cart data:", e);
+          setCartItems([]);
+        }
       }
-    }
-    
-    if (storedWishlist) {
-      try {
-        setWishlistItems(JSON.parse(storedWishlist));
-      } catch (e) {
-        console.error("Failed to parse wishlist data:", e);
-        setWishlistItems([]);
+      
+      if (storedWishlist) {
+        try {
+          setWishlistItems(JSON.parse(storedWishlist));
+        } catch (e) {
+          console.error("Failed to parse wishlist data:", e);
+          setWishlistItems([]);
+        }
       }
     }
   };
 
+  // Enhanced click outside handler
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      setIsScrolled(scrollPosition > 50);
+    const handleClickOutside = (event:any) => {
+      let clickedOutside = true;
+      
+      // Check all dropdown refs
+      Object.values(dropdownRefs.current).forEach(ref => {
+        if (ref && ref.contains(event.target)) {
+          clickedOutside = false;
+        }
+      });
+      
+      Object.values(categoryDropdownRefs.current).forEach(ref => {
+        if (ref && ref.contains(event.target)) {
+          clickedOutside = false;
+        }
+      });
+      
+      if (clickedOutside) {
+        setActiveDropdown(null);
+        setActiveCategoryDropdown(null);
+        setIsUserMenuOpen(false);
+      }
     };
 
-    window.addEventListener("scroll", handleScroll);
-    
-    return () => window.removeEventListener("scroll", handleScroll);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
+  // Enhanced body scroll prevention
   useEffect(() => {
-    // Prevent body scrolling when drawer is open
-    if (isCartOpen || isWishlistOpen || isMenuOpen || isSignInOpen) {
+    if (isMobileMenuOpen || isCartOpen || isWishlistOpen || isSignInOpen) {
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
     } else {
       document.body.style.overflow = 'unset';
+      document.body.style.paddingRight = '0px';
     }
-  }, [isCartOpen, isWishlistOpen, isMenuOpen, isSignInOpen]);
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.body.style.paddingRight = '0px';
+    };
+  }, [isMobileMenuOpen, isCartOpen, isWishlistOpen, isSignInOpen]);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-    if (isMenuOpen) {
-      // Close other drawers when closing menu
-      setIsCartOpen(false);
-      setIsWishlistOpen(false);
-      setIsSignInOpen(false);
-    }
-  };
-
-  const toggleMobileVendor = () => {
-    setIsMobileVendorOpen(!isMobileVendorOpen);
+  // Utility functions
+  const closeAllDrawers = () => {
+    setIsMobileMenuOpen(false);
+    setIsCartOpen(false);
+    setIsWishlistOpen(false);
+    setIsSignInOpen(false);
+    setIsMobileSearchOpen(false);
+    setIsUserMenuOpen(false);
+    setActiveDropdown(null);
+    setActiveCategoryDropdown(null);
   };
 
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
-    if (isWishlistOpen) setIsWishlistOpen(false);
-    if (isSignInOpen) setIsSignInOpen(false);
-    // Close menu when opening cart
-    if (isMenuOpen) setIsMenuOpen(false);
+    setIsMobileMenuOpen(false);
+    setIsWishlistOpen(false);
   };
 
   const toggleWishlist = () => {
     setIsWishlistOpen(!isWishlistOpen);
-    if (isCartOpen) setIsCartOpen(false);
-    if (isSignInOpen) setIsSignInOpen(false);
-    // Close menu when opening wishlist
-    if (isMenuOpen) setIsMenuOpen(false);
-  };
-
-  const toggleSignIn = () => {
-    setIsSignInOpen(!isSignInOpen);
-    // Close other drawers when opening sign-in
-    if (isCartOpen) setIsCartOpen(false);
-    if (isWishlistOpen) setIsWishlistOpen(false);
-    if (isMenuOpen) setIsMenuOpen(false);
-  };
-
-  const toggleUserMenu = () => {
-    setIsUserMenuOpen(!isUserMenuOpen);
-  };
-
-  const closeDrawers = () => {
+    setIsMobileMenuOpen(false);
     setIsCartOpen(false);
-    setIsWishlistOpen(false);
-    setIsMenuOpen(false);
-    setIsSignInOpen(false);
-    setIsUserMenuOpen(false);
   };
 
-  // Helper function to display cart/wishlist count
-  const displayCount = (count: number) => {
-    if (count > 5) return "5+";
-    
-    return count.toString(); 
-  };
-
-  // Calculate cart subtotal
   const calculateSubtotal = () => {
     return cartItems.reduce((total, item) => total + (item.numericPrice * item.quantity), 0);
   };
 
-  // Update item quantity in cart
-  const updateCartItemQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    
+  const updateCartQuantity = (id:any, newQuantity:any) => {
+    if (newQuantity <= 0) return;
     const updatedCart = cartItems.map(item => 
-      item.id === productId ? { ...item, quantity: newQuantity } : item
+      item.id === id ? { ...item, quantity: newQuantity } : item
     );
-    
     setCartItems(updatedCart);
     localStorage.setItem('plantomartCart', JSON.stringify(updatedCart));
     
-    // Dispatch event for other components
     const event = new CustomEvent('cartUpdated', { detail: updatedCart });
     window.dispatchEvent(event);
   };
 
-  // Remove item from cart
-  const removeFromCart = (productId: string) => {
-    const updatedCart = cartItems.filter(item => item.id !== productId);
-    
+  const removeFromCart = (id:any) => {
+    const updatedCart = cartItems.filter(item => item.id !== id);
     setCartItems(updatedCart);
     localStorage.setItem('plantomartCart', JSON.stringify(updatedCart));
     
-    // Dispatch event for other components
     const event = new CustomEvent('cartUpdated', { detail: updatedCart });
     window.dispatchEvent(event);
   };
 
-  // Remove item from wishlist
-  const removeFromWishlist = (productId: string) => {
-    const updatedWishlist = wishlistItems.filter(item => item.id !== productId);
-    
+  const removeFromWishlist = (id:any) => {
+    const updatedWishlist = wishlistItems.filter(item => item.id !== id);
     setWishlistItems(updatedWishlist);
     localStorage.setItem('plantomartWishlist', JSON.stringify(updatedWishlist));
     
-    // Dispatch event for other components
     const event = new CustomEvent('wishlistUpdated', { detail: updatedWishlist });
     window.dispatchEvent(event);
   };
 
-  // Add wishlist item to cart
-  const addWishlistItemToCart = (product: Product) => {
-    // Check if product already exists in cart
+  const addWishlistItemToCart = (product:any) => {
     const existingItemIndex = cartItems.findIndex(item => item.id === product.id);
     
-    let updatedCart:any;
+    let updatedCart;
     if (existingItemIndex >= 0) {
-      // Increase quantity if already in cart
       updatedCart = cartItems.map(item => 
         item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
       );
     } else {
-      // Add new item with quantity 1
-      const newItem: CartItem = { ...product, quantity: 1 };
+      const newItem = { ...product, quantity: 1 };
       updatedCart = [...cartItems, newItem];
     }
     
     setCartItems(updatedCart);
     localStorage.setItem('plantomartCart', JSON.stringify(updatedCart));
     
-    // Dispatch event for other components
     const event = new CustomEvent('cartUpdated', { detail: updatedCart });
     window.dispatchEvent(event);
   };
-  
-  return (
-    <>
-      <nav className={`fixed z-40 w-full transition-all duration-300 ${isScrolled ? 'bg-white py-2 shadow-md' : 'bg-white py-2'}`}>
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            {/* Mobile Menu Button - Left side */}
-            <div className="flex items-center lg:hidden">
-              <button 
-                type='button'
-                className="text-gray-700 hover:text-green-600" 
-                onClick={toggleMenu}
-                aria-label="Toggle menu"
-              >
-                <Menu className="size-6" />
-              </button>
-            </div>
-            {/* Logo - Desktop Left aligned, Mobile centered */}
-            <div className="flex flex-1 items-center justify-center lg:justify-start">
-              <Link href="/" className="flex items-center">
-                <div className="relative size-12">
-                  <Image 
-                    src="/assets/logo_Without_Text.png" 
-                    alt="Plantomart Logo" 
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-                <span className="text-lg font-bold text-green-800 md:text-xl lg:ml-2 lg:text-2xl">plantomart</span>
-              </Link>
-            </div>
-            {/* Desktop Navigation - Hidden on mobile - ADJUSTED POSITIONING */}
-            <div className="hidden lg:flex lg:flex-1 lg:items-center lg:justify-center lg:space-x-6">
-              {/* Vendors Dropdown - FIXED DROPDOWN POSITIONING */}
-              <div className="group relative">
-                <Link href="/vendors" className="flex items-center text-gray-700 hover:text-green-600">
-                  Vendors
-                  <ChevronDown className="ml-1 size-4" />
-                </Link>
-                {/* Vendors Dropdown Menu - FIXED GAP AND POSITION */}
-                <div className="absolute left-1/2 top-full z-50 mt-0 hidden w-screen max-w-5xl -translate-x-1/2 transform rounded-xl border border-gray-200 bg-white p-6 shadow-2xl group-hover:block">
-                  {/* Added invisible padding bridge to prevent hover loss */}
-                  <div className="absolute -top-4 left-0 h-4 w-full"></div>
-                  <div className="flex w-full gap-10">
-                    {/* Vendor List Column */}
-                    <div className="w-1/3 border-r border-gray-100 pr-6">
-                      <h3 className="mb-5 text-xs font-semibold uppercase tracking-wide text-gray-400">Vendors</h3>
-                      <ul className="space-y-3">
-                        <li><Link href="#" className="text-gray-700 transition-colors duration-200 hover:text-green-600">Show Bageecha</Link></li>
-                        <li><Link href="#" className="text-gray-700 transition-colors duration-200 hover:text-green-600">Super Saaf</Link></li>
-                        <li><Link href="#" className="text-gray-700 transition-colors duration-200 hover:text-green-600">Leaf Grid</Link></li>
-                        <li><Link href="#" className="text-gray-700 transition-colors duration-200 hover:text-green-600">Plantify</Link></li>
-                        <li><Link href="#" className="cursor-not-allowed text-gray-400">Surface Gauge <span className="text-xs italic text-gray-300">(Coming soon)</span></Link></li>
-                      </ul>
+
+  const displayCount = (count:any) => {
+    return count > 9 ? "9+" : count.toString();
+  };
+
+  // Smart dropdown positioning function
+  const getDropdownPosition = (buttonRef:any, dropdownWidth = 400) => {
+    if (!buttonRef || !buttonRef.current) return { left: '0px', transform: 'translateX(0)' };
+    
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const buttonCenter = buttonRect.left + buttonRect.width / 2;
+    
+    // Try to center dropdown under button
+    let leftPosition = buttonCenter - dropdownWidth / 2;
+    
+    // Adjust if dropdown would go off-screen
+    const padding = 16; // 16px padding from edges
+    if (leftPosition < padding) {
+      leftPosition = padding;
+    } else if (leftPosition + dropdownWidth > viewportWidth - padding) {
+      leftPosition = viewportWidth - dropdownWidth - padding;
+    }
+    
+    return {
+      left: `${leftPosition}px`,
+      transform: 'translateX(0)'
+    };
+  };
+
+  // Enhanced Dropdown Menu Component with Smart Positioning
+  const DropdownMenu = ({ items, title, isActive, onToggle, type = 'simple' }:any) => {
+    const buttonRef = useRef(null);
+    
+    useEffect(() => {
+      (dropdownRefs as any).current[title] = buttonRef.current;
+    }, [title]);
+
+    return (
+      <div className="relative" ref={buttonRef}>
+        <button
+          className="flex items-center space-x-1 text-gray-700 hover:text-green-600 transition-all duration-200 py-3 px-4 rounded-xl hover:bg-green-50 font-medium"
+          onClick={onToggle}
+        >
+          <span>{title}</span>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isActive && (
+          <>
+            {/* Full screen overlay for mobile */}
+            <div 
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:bg-transparent lg:backdrop-blur-none"
+              onClick={() => setActiveDropdown(null)}
+            />
+            <div 
+              className={`fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden ${
+                type === 'vendors' 
+                  ? 'top-20 left-4 right-4 lg:absolute lg:top-full lg:left-auto lg:right-auto lg:w-screen lg:max-w-5xl'
+                  : 'top-20 left-4 right-4 lg:absolute lg:top-full lg:left-auto lg:right-auto lg:w-64'
+              }`}
+              style={windowWidth >= 1024 ? getDropdownPosition(buttonRef, type === 'vendors' ? 800 : 250) : {}}
+            >
+              {type === 'vendors' ? (
+                <div className="p-6 lg:p-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                    {/* Vendors List */}
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center">
+                        <Store className="w-4 h-4 mr-2" />
+                        Vendors
+                      </h3>
+                      {navigationData.vendors.map((vendor, index) => (
+                        <Link
+                          key={index}
+                          href={vendor.href}
+                          className={`group flex items-center justify-between px-4 py-3 text-sm rounded-xl transition-all duration-200 ${
+                            vendor.disabled 
+                              ? 'text-gray-400 cursor-not-allowed bg-gray-50' 
+                              : 'text-gray-700 hover:text-green-600 hover:bg-green-50'
+                          }`}
+                          onClick={vendor.disabled ? (e) => e.preventDefault() : closeAllDrawers}
+                        >
+                          <div>
+                            <div className="font-medium">{vendor.name}</div>
+                            {vendor.comingSoon && (
+                              <div className="text-xs text-gray-400 italic">Coming soon</div>
+                            )}
+                          </div>
+                          {!vendor.disabled && (
+                            <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                          )}
+                        </Link>
+                      ))}
                     </div>
-                    {/* Product Column */}
-                    <div className="w-1/3 border-r border-gray-100 pr-6">
-                      <h3 className="mb-5 text-xs font-semibold uppercase tracking-wide text-gray-400">GROW WITH PLANTOMART</h3>
-                      {/* <h3 className="mb-5 text-xs font-semibold uppercase tracking-wide text-gray-400">Vendor HUB</h3> */}
-                      <ul className="space-y-3">
-                        <li><Link href="/vendor" className="text-gray-700 transition-colors duration-200 hover:text-green-600">Browse Vendors</Link></li>
-                        <li><Link href="/vendor/register" className="text-gray-700 transition-colors duration-200 hover:text-green-600">Start Selling</Link></li>
-                        <li><Link href="/guides" className="text-gray-700 transition-colors duration-200 hover:text-green-600">Help & Guides</Link></li>
-                        <li><Link href="/vendor/dashboard" className="text-gray-700 transition-colors duration-200 hover:text-green-600">My Seller Hub</Link></li>
-                      </ul>
+                    
+                    {/* Vendor Actions */}
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center">
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Grow with Plantomart
+                      </h3>
+                      {navigationData.vendorActions.map((action, index) => {
+                        const Icon = action.icon;
+                        return (
+                          <Link
+                            key={index}
+                            href={action.href}
+                            className="group flex items-center px-4 py-3 text-sm text-gray-700 rounded-xl hover:text-green-600 hover:bg-green-50 transition-all duration-200"
+                            onClick={closeAllDrawers}
+                          >
+                            <Icon className="w-5 h-5 mr-3 text-green-600 group-hover:scale-110 transition-transform duration-200" />
+                            <span className="font-medium">{action.name}</span>
+                            <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                          </Link>
+                        );
+                      })}
                     </div>
+                    
                     {/* Promo Banner */}
-                    <div className="w-1/3">
-                      <div className="relative h-52 w-full overflow-hidden rounded-lg border border-gray-200 bg-gradient-to-br from-green-100 via-white to-green-50 shadow-md transition-shadow duration-300 hover:shadow-lg">
-                        <div className="absolute inset-0 bg-[url('/api/placeholder/500/300')] bg-cover bg-center opacity-20"></div>
-                        <div className="relative z-10 flex h-full flex-col items-center justify-center p-4 text-center text-green-900">
-                          <h3 className="mb-1 text-2xl font-bold">25% OFF</h3>
-                          <p className="text-sm font-medium">Shop at Planto-Mart</p>
-                        </div>
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-600 p-6 text-white">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
+                      <div className="relative z-10 text-center">
+                        <div className="text-3xl font-bold mb-2">25% OFF</div>
+                        <div className="text-sm font-medium mb-4 opacity-90">Your first order</div>
+                        <button className="px-6 py-3 bg-white text-green-600 text-sm rounded-xl hover:bg-gray-50 transition-colors duration-200 font-bold shadow-lg">
+                          Shop Now
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <Link href="/about" className="text-gray-700 hover:text-green-600">About</Link>
-              <div className="group relative">
-                <Link href="/blogs" className="flex items-center text-gray-700 hover:text-green-600">
-                  Blog
-                  <ChevronDown className="ml-1 size-4" />
-                </Link>
-                {/* Added dropdown container for Blog dropdown */}
-                <div className="absolute left-0 top-full z-50 mt-0 hidden w-48 rounded-lg border border-gray-200 bg-white p-4 shadow-xl group-hover:block">
-                  {/* Added invisible padding bridge to prevent hover loss */}
-                  <div className="absolute -top-4 left-0 h-4 w-full"></div>
-                  <ul className="space-y-2">
-                    <li><Link href="/blog/green-living" className="block text-gray-700 hover:text-green-600">Green Living</Link></li>
-                    {/* Tips for sustainable living, eco-friendly choices, and mindful consumption. */}
-                    <li><Link href="/blog/plant-care-101" className="block text-gray-700 hover:text-green-600">Plant Care 101</Link></li>
-                    {/* Guides for beginners and seasoned plant parents — watering, lighting, soil, etc. */}
-                    <li><Link href="/blog/indoor-jungle" className="block text-gray-700 hover:text-green-600">Indoor Jungle</Link></li>
-                    {/* Inspiration for styling homes/offices with plants, trends, and decor hacks. */}
-                    <li><Link href="/blog/seasonal-gardening" className="block text-gray-700 hover:text-green-600">Seasonal Gardening</Link></li>
-                    {/* Planting tips by season, climate-specific advice, and garden prep guides. */}
-                  </ul>
+              ) : (
+                <div className="py-2">
+                  {items.map((item:any, index:any) => (
+                    <Link
+                      key={index}
+                      href={item.href}
+                      className="block px-6 py-3 text-sm text-gray-700 hover:text-green-600 hover:bg-green-50 transition-colors duration-200 font-medium"
+                      onClick={closeAllDrawers}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
                 </div>
-              </div>
-              <div className="group relative">
-                <div  className="flex items-center text-gray-700 hover:text-green-600">
-                  company
-                  <ChevronDown className="ml-1 size-4" />
-                </div>
-                {/* Added dropdown container for Page dropdown */}
-                <div className="absolute left-0 top-full z-50 mt-0 hidden w-48 rounded-lg border border-gray-200 bg-white p-4 shadow-xl group-hover:block">
-                  {/* Added invisible padding bridge to prevent hover loss */}
-                  <div className="absolute -top-4 left-0 h-4 w-full"></div>
-                  <ul className="space-y-2">
-                    <li><Link href="/about" className="block text-gray-700 hover:text-green-600">About Us</Link></li>
-                    <li><Link href="/faq" className="block text-gray-700 hover:text-green-600">FAQ</Link></li>
-                  </ul>
-                </div>
-              </div>
-              <Link href="/contact-us" className="text-gray-700 hover:text-green-600">Contact</Link>
+              )}
             </div>
-            {/* Desktop Actions Container - Added more separation from menu */}
-            <div className="hidden items-center lg:flex lg:space-x-8">
-              {/* Delivery Info - Now with more space from action icons */}
-              <div className="flex items-center text-green-600">
-                <div className="relative mr-3 flex size-10 items-center justify-center rounded-full bg-green-100 p-2">
-                  <Truck className="size-5 text-green-600" />
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Enhanced Category Dropdown with Smart Positioning
+  const CategoryDropdown = ({ category, items, icon: Icon, isActive, onToggle }:any) => {
+    const buttonRef = useRef(null);
+    
+    useEffect(() => {
+      (categoryDropdownRefs as any).current[category] = buttonRef.current;
+    }, [category]);
+
+    return (
+      <div className="relative" ref={buttonRef}>
+        <button
+          className="flex items-center space-x-2 px-6 py-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200 font-medium group"
+          onClick={onToggle}
+        >
+          <Icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+          <span>{category}</span>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isActive && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:bg-transparent lg:backdrop-blur-none"
+              onClick={() => setActiveCategoryDropdown(null)}
+            />
+            <div 
+              className="fixed top-32 left-4 right-4 lg:absolute lg:top-full lg:left-auto lg:right-auto lg:w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              style={windowWidth >= 1024 ? getDropdownPosition(buttonRef, 320) : {}}
+            >
+              <div className="p-4">
+                <div className="px-2 pb-3 border-b border-gray-100">
+                  <h4 className="text-sm font-bold text-gray-900 flex items-center">
+                    <Icon className="w-4 h-4 mr-2 text-green-600" />
+                    {category}
+                  </h4>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-500">Reach Out At</span>
-                  <span className="font-bold text-black">+91 833 180 1000</span>
+                <div className="py-2 max-h-64 overflow-y-auto">
+                  {items.map((item:any, index:any) => (
+                    <Link
+                      key={index}
+                      href={`/product/${item.toLowerCase().replace(/\s+/g, '-')}`}
+                      className="group flex items-center justify-between px-3 py-2.5 text-sm text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200"
+                      onClick={closeAllDrawers}
+                    >
+                      <span className="font-medium">{item}</span>
+                      <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                    </Link>
+                  ))}
                 </div>
               </div>
-              {/* Action Icons - With divider for visual separation */}
-              <div className="flex items-center space-x-5 border-l border-gray-200 pl-6">
-                <button type='button' className="text-gray-700 hover:text-green-600">
-                  <Search className="size-5" />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Enhanced Mobile Drawer Component
+  const MobileDrawer = ({ isOpen, onClose, children, title, size = 'default' }:any) => {
+    const getDrawerWidth = () => {
+      if (size === 'small') return 'max-w-sm';
+      if (size === 'large') return 'max-w-lg';
+      return 'max-w-md';
+    };
+
+    return (
+      <>
+        {isOpen && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-all duration-300"
+              onClick={onClose}
+            />
+            <div className={`fixed inset-y-0 right-0 w-full ${getDrawerWidth()} bg-white shadow-2xl z-50 transform transition-all duration-300 ease-out ${
+              isOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}>
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-white">
+                <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+                <button
+                  onClick={onClose}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-colors duration-200"
+                  aria-label={`Close ${title}`}
+                >
+                  <X className="w-6 h-6" />
                 </button>
-                {/* User Profile/Sign In Button */}
+              </div>
+              <div className="flex-1 overflow-y-auto overscroll-contain">
+                {children}
+              </div>
+            </div>
+          </>
+        )}
+      </>
+    );
+  };
+
+  if (!isClient) {
+    return (
+      <div className="h-32 lg:h-40 bg-white border-b border-gray-100">
+        <div className="animate-pulse">
+          <div className="h-20 bg-gray-50"></div>
+          <div className="h-12 bg-gray-25"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Main Navbar */}
+      <nav 
+        ref={navbarRef}
+        className={`fixed top-0 left-0 right-0 z-30 transition-all duration-300 ease-out backdrop-blur-lg ${
+          isScrolled 
+            ? 'bg-white/95 shadow-xl py-2' 
+            : 'bg-white/98 py-4'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4">
+            {/* Mobile Menu Button */}
+            <button
+              className="lg:hidden p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200 flex-shrink-0"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open mobile menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+
+            {/* Logo */}
+            <Link href="/" className="flex items-center group flex-shrink-0" onClick={closeAllDrawers}>
+              <div className="relative w-10 h-10 mr-3 group-hover:scale-110 transition-transform duration-200">
+                <Image 
+                  src="/assets/logo_Without_Text.png" 
+                  alt="Plantomart Logo" 
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <span className="text-xl font-bold text-green-800 group-hover:text-green-600 transition-colors duration-200">
+                plantomart
+              </span>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <div className="px-4 hidden lg:flex items-center space-x-2 xl:space-x-4 flex-1 justify-center">
+              <DropdownMenu
+                title="Vendors"
+                items={navigationData.vendors}
+                isActive={activeDropdown === 'Vendors'}
+                onToggle={() => setActiveDropdown(activeDropdown === 'Vendors' ? null : 'Vendors')}
+                type="vendors"
+              />
+              
+              <Link 
+                href="/about" 
+                className="text-gray-700 hover:text-green-600 transition-colors font-medium px-3 py-2 rounded-lg hover:bg-green-50 whitespace-nowrap"
+                onClick={closeAllDrawers}
+              >
+                About
+              </Link>
+              
+              <DropdownMenu
+                title="Blog"
+                items={navigationData.blog}
+                isActive={activeDropdown === 'Blog'}
+                onToggle={() => setActiveDropdown(activeDropdown === 'Blog' ? null : 'Blog')}
+              />
+              
+              <DropdownMenu
+                title="Company"
+                items={navigationData.company}
+                isActive={activeDropdown === 'Company'}
+                onToggle={() => setActiveDropdown(activeDropdown === 'Company' ? null : 'Company')}
+              />
+              
+              <Link 
+                href="/contact" 
+                className="text-gray-700 hover:text-green-600 transition-colors font-medium px-3 py-2 rounded-lg hover:bg-green-50 whitespace-nowrap"
+                onClick={closeAllDrawers}
+              >
+                Contact
+              </Link>
+            </div>
+
+            {/* Desktop Actions */}
+            <div className="hidden lg:flex items-center space-x-4 flex-shrink-0">
+              {/* Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search plants, pots, kits..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-56 xl:w-72 pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white hover:bg-white text-sm"
+                />
+                <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+              </div>
+
+              {/* User Actions */}
+              <div className="flex items-center space-x-3">
                 {user ? (
                   <div className="relative">
                     <button 
-                      type='button'
-                      onClick={toggleUserMenu}
-                      className="relative flex items-center"
+                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                      className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-50 transition-colors duration-200 group"
                       aria-label="User menu"
                     >
                       {user.avatar_url ? (
-                        <div className="relative size-8 overflow-hidden rounded-full border-2 border-green-200 transition-all hover:border-green-400">
+                        <div className="relative w-8 h-8 rounded-full border-2 border-green-200 overflow-hidden group-hover:border-green-300 transition-colors duration-200">
                           <Image 
                             src={user.avatar_url} 
                             alt="User profile" 
@@ -485,96 +737,234 @@ function Navbar() {
                           />
                         </div>
                       ) : (
-                        <div className="flex size-8 items-center justify-center rounded-full bg-green-100 text-green-600 transition-colors hover:bg-green-200">
-                          <User className="size-5" />
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors duration-200">
+                          <User className="w-4 h-4 text-green-600" />
                         </div>
                       )}
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-green-600 transition-colors duration-200 max-w-24 truncate">
+                        {user.full_name || 'User'}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-200" />
                     </button>
-                    {/* User dropdown menu */}
+
+                    {/* User dropdown menu with smart positioning */}
                     {isUserMenuOpen && (
-                      <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-gray-200 bg-white py-2 shadow-lg">
-                        <div className="border-b border-gray-100 px-4 py-2">
-                          <p className="font-medium text-gray-900">{user.full_name || 'User'}</p>
-                          <p className="text-xs text-gray-500">{user.email}</p>
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 overflow-hidden">
+                          <div className="px-6 py-4 border-b border-gray-100 bg-green-50">
+                            <p className="font-semibold text-gray-900">{user.full_name || 'User'}</p>
+                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                          </div>
+                          <Link 
+                            href="/account" 
+                            className="flex items-center px-6 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200 group"
+                            onClick={closeAllDrawers}
+                          >
+                            <User className="w-4 h-4 mr-3 text-green-600" />
+                            My Account
+                            <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                          </Link>
+                          <Link 
+                            href="/orders" 
+                            className="flex items-center px-6 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200 group"
+                            onClick={closeAllDrawers}
+                          >
+                            <Package className="w-4 h-4 mr-3 text-green-600" />
+                            My Orders
+                            <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                          </Link>
+                          <div className="border-t border-gray-100 mt-2 pt-2">
+                            <button 
+                              onClick={handleSignOut}
+                              className="w-full flex items-center px-6 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                            >
+                              <LogOut className="mr-3 w-4 h-4" />
+                              Sign out
+                            </button>
+                          </div>
                         </div>
-                        <Link 
-                          href="/account" 
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          My Account
-                        </Link>
-                        <Link 
-                          href="/orders" 
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          My Orders
-                        </Link>
-                        <button 
-                          type='button'
-                          onClick={handleSignOut}
-                          className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                        >
-                          <LogOut className="mr-2 size-4" />
-                          Sign out
-                        </button>
-                      </div>
+                      </>
                     )}
                   </div>
                 ) : (
-                  <button 
-                    type='button'
-                    onClick={toggleSignIn}
-                    className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+                  <button
+                    onClick={() => setIsSignInOpen(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
-                    Sign in
+                    Sign In
                   </button>
                 )}
-                <div className="relative">
-                  <button 
-                    type='button'
-                    className="text-gray-700 hover:text-green-600"
-                    onClick={toggleCart}
-                    aria-label="Cart"
-                  >
-                    {cartItems.length > 0 && (
-                    <span className="absolute -right-2 -top-2 flex size-5 items-center justify-center rounded-full bg-yellow-500 text-xs text-white">
-                        {displayCount(cartItems.length)}
+
+                <button
+                  onClick={toggleWishlist}
+                  className="relative p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200 group"
+                  aria-label={`Wishlist (${wishlistItems.length} items)`}
+                >
+                  <Heart className="w-6 h-6 group-hover:scale-110 transition-transform duration-200" />
+                  {wishlistItems.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-gradient-to-r from-pink-500 to-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                      {displayCount(wishlistItems.length)}
                     </span>
-                    )}
-                    <ShoppingCart className="size-5" />
-                  </button>
-                </div>
-                <div className="relative">
-                  <button 
-                    type='button'
-                    className="text-gray-700 hover:text-green-600"
-                    onClick={toggleWishlist}
-                    aria-label="Wishlist"
-                  >
-                    {wishlistItems.length > 0 && (
-                    <span className="absolute -right-2 -top-2 flex size-5 items-center justify-center rounded-full bg-yellow-500 text-xs text-white">
-                        {displayCount(wishlistItems.length)}
+                  )}
+                </button>
+
+                <button
+                  onClick={toggleCart}
+                  className="relative p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200 group"
+                  aria-label={`Cart (${cartItems.length} items)`}
+                >
+                  <ShoppingCart className="w-6 h-6 group-hover:scale-110 transition-transform duration-200" />
+                  {cartItems.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-lg animate-bounce">
+                      {displayCount(cartItems.length)}
                     </span>
-                    )}
-                    <Heart className="size-5" />
-                  </button>
-                </div>
+                  )}
+                </button>
               </div>
             </div>
-            {/* Mobile Right Actions */}
-            <div className="flex items-center space-x-4 lg:hidden">
-              {/* User Profile/Sign In Button for Mobile */}
+
+            {/* Mobile Actions */}
+            <div className="lg:hidden flex items-center space-x-2 flex-shrink-0">
+              <button
+                onClick={() => setIsMobileSearchOpen(true)}
+                className="p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200"
+                aria-label="Search"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+              
+              <Link 
+                href="tel:+918331801000" 
+                className="p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200"
+                aria-label="Call us"
+              >
+                <Phone className="w-5 h-5" />
+              </Link>
+
               {user ? (
                 <button 
-                  type='button'
-                  onClick={toggleUserMenu}
-                  className="relative text-gray-700"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="relative p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200"
                   aria-label="User menu"
                 >
                   {user.avatar_url ? (
-                    <div className="relative size-7 overflow-hidden rounded-full border-2 border-green-200">
+                    <div className="relative w-5 h-5 rounded-full border border-green-200 overflow-hidden">
+                      <Image 
+                        src={user.avatar_url} 
+                        alt="User profile"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <User className="w-5 h-5" />
+                  )}
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setIsSignInOpen(true)}
+                  className="p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200"
+                  aria-label="Sign in"
+                >
+                  <User className="w-5 h-5" />
+                </button>
+              )}
+
+              <button
+                onClick={toggleCart}
+                className="relative p-3 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200"
+                aria-label={`Cart (${cartItems.length} items)`}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {displayCount(cartItems.length)}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Enhanced Secondary Category Navigation */}
+      <div className={`fixed left-0 right-0 z-20 bg-white/95 backdrop-blur-lg border-b border-gray-100 transition-all duration-300 ${
+        isScrolled ? 'top-16' : 'top-20'
+      } lg:${isScrolled ? 'top-20' : 'top-24'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="hidden lg:flex items-center justify-center space-x-4 xl:space-x-8">
+            <CategoryDropdown
+              category="Plants"
+              items={navigationData.categories.plants}
+              icon={Leaf}
+              isActive={activeCategoryDropdown === 'Plants'}
+              onToggle={() => setActiveCategoryDropdown(activeCategoryDropdown === 'Plants' ? null : 'Plants')}
+            />
+            
+            <CategoryDropdown
+              category="Planters & Pots"
+              items={navigationData.categories.planters}
+              icon={Package}
+              isActive={activeCategoryDropdown === 'Planters & Pots'}
+              onToggle={() => setActiveCategoryDropdown(activeCategoryDropdown === 'Planters & Pots' ? null : 'Planters & Pots')}
+            />
+            
+            <CategoryDropdown
+              category="Gardening Kits"
+              items={navigationData.categories.gardeningKits}
+              icon={Shovel}
+              isActive={activeCategoryDropdown === 'Gardening Kits'}
+              onToggle={() => setActiveCategoryDropdown(activeCategoryDropdown === 'Gardening Kits' ? null : 'Gardening Kits')}
+            />
+          </div>
+          
+          {/* Enhanced Mobile Category Scroll */}
+          <div className="lg:hidden flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+            <Link 
+              href="/category/plants"
+              className="flex items-center space-x-2 px-5 py-3 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-2xl whitespace-nowrap hover:from-green-200 hover:to-green-300 transition-all duration-200 shadow-md"
+              onClick={closeAllDrawers}
+            >
+              <Leaf className="w-4 h-4" />
+              <span className="font-medium">Plants</span>
+            </Link>
+            <Link 
+              href="/category/planters"
+              className="flex items-center space-x-2 px-5 py-3 text-gray-700 bg-white border border-gray-200 rounded-2xl whitespace-nowrap hover:bg-gray-50 transition-all duration-200 shadow-sm"
+              onClick={closeAllDrawers}
+            >
+              <Package className="w-4 h-4" />
+              <span className="font-medium">Planters</span>
+            </Link>
+            <Link 
+              href="/category/gardening-kits"
+              className="flex items-center space-x-2 px-5 py-3 text-gray-700 bg-white border border-gray-200 rounded-2xl whitespace-nowrap hover:bg-gray-50 transition-all duration-200 shadow-sm"
+              onClick={closeAllDrawers}
+            >
+              <Shovel className="w-4 h-4" />
+              <span className="font-medium">Kits</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Rest of your mobile components with enhanced styling */}
+      {/* Enhanced Mobile Menu */}
+      <MobileDrawer
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        title="Menu"
+        size="large"
+      >
+        <div className="p-6 space-y-6">
+          {/* Enhanced User Section */}
+          {user ? (
+            <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-2xl p-5 border border-green-200">
+              <div className="flex items-center mb-4">
+                <div className="w-14 h-14 bg-gradient-to-r from-green-200 to-green-300 rounded-full flex items-center justify-center mr-4">
+                  {user.avatar_url ? (
+                    <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-white">
                       <Image 
                         src={user.avatar_url} 
                         alt="User profile" 
@@ -583,491 +973,543 @@ function Navbar() {
                       />
                     </div>
                   ) : (
-                    <User className="size-5 text-gray-700 hover:text-green-600" />
+                    <User className="w-7 h-7 text-green-700" />
                   )}
-                </button>
-              ) : (
-                <button 
-                  type='button'
-                  onClick={toggleSignIn}
-                  className="relative text-gray-700 hover:text-green-600"
-                  aria-label="Sign in"
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-gray-900 text-lg">{user.full_name || 'User'}</div>
+                  <div className="text-sm text-green-700 truncate">{user.email}</div>
+                </div>
+              </div>
+              <div className="flex space-x-3">
+                <Link 
+                  href="/account"
+                  className="flex-1 py-3 px-4 bg-white rounded-xl text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors duration-200 shadow-sm"
+                  onClick={closeAllDrawers}
                 >
-                  <User className="size-5" />
+                  My Account
+                </Link>
+                <button 
+                  onClick={handleSignOut}
+                  className="flex-1 py-3 px-4 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors duration-200"
+                >
+                  Sign out
                 </button>
-              )}
-              {/* Phone icon - matches reference image */}
-              <Link href="tel:+918331801000" className="relative text-gray-700 hover:text-green-600">
-                <Phone className="size-5" />
-              </Link>
-              {/* Shopping Cart */}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-2xl p-6 text-center border border-green-200">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-200 to-green-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-green-700" />
+              </div>
+              <div className="mb-4 text-gray-700 font-medium">Sign in to access your account</div>
               <button 
-                type='button'
-                className="relative text-gray-700 hover:text-green-600"
-                onClick={toggleCart}
-                aria-label="Cart"
+                onClick={() => {
+                  setIsSignInOpen(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full py-3 px-6 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg"
               >
-                {cartItems.length > 0 && (
-                <span className="absolute -right-2 -top-2 flex size-4 items-center justify-center rounded-full bg-yellow-500 text-xs text-white">
-                    {displayCount(cartItems.length)}
-                </span>
-                )}
-                <ShoppingCart className="size-5" />
+                Sign In
               </button>
+            </div>
+          )}
+
+          {/* Enhanced search bar */}
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Search plants, pots, kits..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 focus:bg-white hover:bg-white transition-all duration-200"
+            />
+            <Search className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
+          </div>
+
+          {/* Navigation Links */}
+          <div className="space-y-2">
+            {[
+              { name: 'Home', href: '/', icon: Home },
+              { name: 'Vendors', href: '/vendors', icon: Store },
+              { name: 'About', href: '/about', icon: Building2 },
+              { name: 'Blog', href: '/blog', icon: BookOpen },
+              { name: 'Contact', href: '/contact', icon: MessageCircle },
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <Link 
+                  key={index}
+                  href={item.href} 
+                  className="flex items-center px-5 py-4 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-2xl transition-all duration-200 group"
+                  onClick={closeAllDrawers}
+                >
+                  <Icon className="w-6 h-6 mr-4 text-green-600 group-hover:scale-110 transition-transform duration-200" />
+                  <span className="font-semibold">{item.name}</span>
+                  <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex space-x-3">
+            <button 
+              onClick={() => {
+                toggleWishlist();
+                setIsMobileMenuOpen(false);
+              }}
+              className="flex-1 flex items-center justify-center py-4 bg-gradient-to-r from-pink-50 to-red-50 rounded-2xl hover:from-pink-100 hover:to-red-100 transition-all duration-200 border border-pink-200"
+            >
+              <Heart className="w-5 h-5 mr-2 text-pink-600" />
+              <span className="text-sm font-semibold text-pink-700">Wishlist ({wishlistItems.length})</span>
+            </button>
+            <Link 
+              href="tel:+918331801000"
+              className="flex-1 flex items-center justify-center py-4 bg-gradient-to-r from-green-100 to-green-200 rounded-2xl text-green-700 hover:from-green-200 hover:to-green-300 transition-all duration-200 border border-green-300"
+              onClick={closeAllDrawers}
+            >
+              <Phone className="w-5 h-5 mr-2" />
+              <span className="text-sm font-semibold">Call Us</span>
+            </Link>
+          </div>
+
+          {/* Category Links */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center">
+              <Package className="w-4 h-4 mr-2" />
+              Shop Categories
+            </h3>
+            <div className="space-y-2">
+              {[
+                { name: 'Plants', href: '/category/plants', icon: Leaf },
+                { name: 'Planters & Pots', href: '/category/planters', icon: Package },
+                { name: 'Gardening Kits', href: '/category/gardening-kits', icon: Shovel },
+              ].map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <Link 
+                    key={index}
+                    href={item.href}
+                    className="flex items-center px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-xl transition-all duration-200 group"
+                    onClick={closeAllDrawers}
+                  >
+                    <Icon className="w-5 h-5 mr-4 text-green-600 group-hover:scale-110 transition-transform duration-200" />
+                    <span className="font-medium">{item.name}</span>
+                    <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Contact Info */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-5 border border-green-200">
+            <h3 className="text-lg font-bold text-green-800 mb-3 flex items-center">
+              <MessageCircle className="w-5 h-5 mr-2" />
+              Need Help?
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center text-green-700">
+                <Phone className="w-5 h-5 mr-3" />
+                <Link 
+                  href="tel:+918331801000" 
+                  className="text-lg font-semibold hover:text-green-800 transition-colors duration-200"
+                  onClick={closeAllDrawers}
+                >
+                  +91 833 180 1000
+                </Link>
+              </div>
+              <div className="text-sm text-green-600 font-medium ml-8">Available 9 AM - 6 PM, Mon-Sat</div>
             </div>
           </div>
         </div>
-        {/* Mobile Navigation Menu - UPDATED with better header and UX */}
-        {isMenuOpen && (
-          <>
-            {/* Overlay that covers the rest of the screen */}
-            {/** biome-ignore lint/a11y/noStaticElementInteractions: will look into later */}
-            {/** biome-ignore lint/a11y/useKeyWithClickEvents: will look into later */}
-            <div 
-              className="fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity lg:hidden"
-              onClick={toggleMenu}
-            ></div>
-            {/* Side drawer menu that slides in from the left with improved header */}
-            <div className="fixed inset-y-0 left-0 z-50 w-4/5 max-w-sm overflow-hidden bg-white shadow-xl transition-transform lg:hidden">
-              {/* Menu Header with close button */}
-              <div className="flex items-center justify-between border-b border-gray-100 bg-green-50 px-4 py-3">
-                <div className="flex items-center">
-                  <div className="relative mr-2 size-8">
-                    <Image 
-                      src="/assets/logo_Without_Text.png" 
-                      alt="Plantomart Logo" 
+      </MobileDrawer>
+
+      {/* Mobile Search */}
+      <MobileDrawer
+        isOpen={isMobileSearchOpen}
+        onClose={() => setIsMobileSearchOpen(false)}
+        title="Search"
+        size="small"
+      >
+        <div className="p-6">
+          <div className="relative mb-6">
+            <input
+              type="text"
+              placeholder="Search plants, planters, kits..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 focus:bg-white"
+              autoFocus
+            />
+            <Search className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
+          </div>
+          <div className="space-y-4">
+            <div className="text-sm font-bold text-gray-700 mb-3">Popular searches:</div>
+            <div className="flex flex-wrap gap-2">
+              {['Peace Lily', 'Snake Plant', 'Ceramic Pots', 'Starter Kit', 'Succulents', 'Air Plants'].map((term, index) => (
+                <button 
+                  key={index}
+                  onClick={() => setSearchQuery(term)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-green-100 hover:text-green-700 transition-colors duration-200 font-medium"
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </MobileDrawer>
+
+      {/* Cart and Wishlist Drawers */}
+      <MobileDrawer
+        isOpen={isCartOpen}
+        onClose={toggleCart}
+        title={`Shopping Cart (${cartItems.length})`}
+      >
+        <div className="flex flex-col h-full">
+          <div className="flex-1 p-6">
+            {cartItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                <div className="w-20 h-20 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+                  <ShoppingCart className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Your cart is empty</h3>
+                <p className="text-gray-600 mb-8 max-w-xs leading-relaxed">Discover our beautiful plants and add them to your cart</p>
+                <button
+                  onClick={closeAllDrawers}
+                  className="px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105"
+                >
+                  Continue Shopping
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {cartItems.map(item => (
+                  <div key={item.id} className="flex items-center space-x-4 bg-gradient-to-r from-gray-50 to-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <div className="relative w-20 h-20 bg-gray-200 rounded-xl overflow-hidden">
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                      />
+                      {item.tag && (
+                        <span className="absolute top-1 left-1 bg-yellow-500 text-white text-xs px-2 py-1 rounded-br-xl rounded-tl-xl font-bold">
+                          {item.tag}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-sm leading-tight mb-1">{item.title}</h4>
+                      <p className="text-green-600 font-bold text-lg">{item.price}</p>
+                      <div className="flex items-center space-x-3 mt-3">
+                        <button 
+                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className="w-10 h-10 bg-white border-2 border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-12 text-center text-lg font-bold">{item.quantity}</span>
+                        <button 
+                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                          className="w-10 h-10 bg-white border-2 border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => removeFromCart(item.id)}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors duration-200"
+                      aria-label={`Remove ${item.title} from cart`}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {cartItems.length > 0 && (
+            <div className="border-t border-gray-200 p-6 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xl font-bold text-gray-900">Subtotal:</span>
+                <span className="text-xl font-bold text-green-600">₹{calculateSubtotal().toFixed(2)}</span>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">Shipping and taxes calculated at checkout</p>
+              <Link
+                href="/checkout"
+                className="block w-full py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-bold text-center shadow-lg text-lg"
+                onClick={closeAllDrawers}
+              >
+                Proceed to Checkout
+              </Link>
+              <button
+                onClick={closeAllDrawers}
+                className="block w-full py-3 text-center text-green-600 hover:text-green-700 transition-colors text-sm font-semibold mt-3"
+              >
+                Continue Shopping
+              </button>
+            </div>
+          )}
+        </div>
+      </MobileDrawer>
+
+      <MobileDrawer
+        isOpen={isWishlistOpen}
+        onClose={toggleWishlist}
+        title={`Wishlist (${wishlistItems.length})`}
+      >
+        <div className="p-6">
+          {wishlistItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-96 text-center">
+              <div className="w-20 h-20 bg-gradient-to-r from-pink-100 to-red-100 rounded-full flex items-center justify-center mb-6">
+                <Heart className="w-10 h-10 text-pink-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Your wishlist is empty</h3>
+              <p className="text-gray-600 mb-8 max-w-xs leading-relaxed">Save your favorite plants for later</p>
+              <button
+                onClick={closeAllDrawers}
+                className="px-8 py-4 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl hover:from-pink-600 hover:to-red-600 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105"
+              >
+                Continue Shopping
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {wishlistItems.map(item => (
+                <div key={item.id} className="flex items-center space-x-4 bg-gradient-to-r from-pink-50 to-red-50 rounded-2xl p-5 border border-pink-200 shadow-sm">
+                  <div className="relative w-20 h-20 bg-gray-200 rounded-xl overflow-hidden">
+                    <Image
+                      src={item.image}
+                      alt={item.title}
                       fill
-                      className="object-contain"
+                      className="object-cover"
                     />
                   </div>
-                  <span className="text-lg font-bold text-green-800">plantomart</span>
-                </div>
-                <button 
-                  type='button'
-                  onClick={toggleMenu}
-                  className="rounded-full p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                  aria-label="Close menu"
-                >
-                  <X className="size-6" />
-                </button>
-              </div>
-              {/* Menu content with scrollable area */}
-              <div className="h-[calc(100%-56px)] overflow-y-auto">
-                <div className="p-4">
-                  <div className="flex flex-col space-y-4">
-                    {/* User Profile Section for Mobile Menu */}
-                    {user ? (
-                      <div className="mb-2 rounded-lg bg-green-50 p-4">
-                        <div className="flex items-center">
-                          {user.avatar_url ? (
-                            <div className="relative mr-3 size-12 overflow-hidden rounded-full border-2 border-green-200">
-                              <Image 
-                                src={user.avatar_url} 
-                                alt="User profile" 
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="mr-3 flex size-12 items-center justify-center rounded-full bg-green-100">
-                              <User className="size-6 text-green-600" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium text-gray-900">{user.full_name || 'User'}</p>
-                            <p className="text-xs text-gray-500">{user.email}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <Link 
-                            href="/account" 
-                            className="rounded bg-white px-3 py-1.5 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-green-50"
-                            onClick={closeDrawers}
-                          >
-                            My Account
-                          </Link>
-                          <button 
-                            type='button'
-                            onClick={handleSignOut}
-                            className="rounded bg-red-50 px-3 py-1.5 text-center text-sm font-medium text-red-600 shadow-sm hover:bg-red-100"
-                          >
-                            Sign out
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mb-2 rounded-lg bg-green-50 p-4 text-center">
-                        <p className="mb-3 text-sm text-gray-600">Sign in to access your account</p>
-                        <button  
-                          type='button'
-                          onClick={() => {
-                            toggleSignIn();
-                            // toggleMenu();
-                          }}
-                          className="w-full rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
-                        >
-                          Sign in
-                        </button>
-                      </div>
-                    )}
-                    {/* Search bar with improved styling */}
-                    <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                      <Search className="mr-2 size-5 text-gray-400" />
-                      <input 
-                        type="text" 
-                        placeholder="Search products..." 
-                        className="flex-1 bg-transparent text-gray-700 outline-none"
-                      />
-                    </div>
-                    {/* Account shortcuts with improved visual design */}
-                    <div className="flex flex-wrap gap-2 rounded-lg bg-gray-50 p-3">
-                      <Link href="/account" className="flex items-center rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-green-50">
-                        <User className="mr-1.5 size-4 text-green-600" />
-                        Account
-                      </Link>
-                      <Link href="/orders" className="flex items-center rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-green-50">
-                        <Truck className="mr-1.5 size-4 text-green-600" />
-                        Orders
-                      </Link>
-                      <Link href="/wishlist" className="flex items-center rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-green-50">
-                        <Heart className="mr-1.5 size-4 text-green-600" />
-                        Wishlist
-                      </Link>
-                    </div>
-                    {/* Navigation Links */}
-                    <div className="space-y-1">
-                      <Link href="/" className="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-600">
-                        Home
-                      </Link>
-                      {/* Vendors Dropdown */}
-                      <div>
-                        <button 
-                          type='button'
-                          onClick={toggleMobileVendor}
-                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-600"
-                        >
-                          <span>Vendors</span>
-                          {isMobileVendorOpen ? (
-                            <ChevronDown className="size-4" />
-                          ) : (
-                            <ChevronRight className="size-4" />
-                          )}
-                        </button>
-                        {isMobileVendorOpen && (
-                          <div className="ml-4 mt-1 space-y-1 border-l border-gray-200 pl-3">
-                            <Link href="#" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Show Bageecha
-                            </Link>
-                            <Link href="#" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Super Saaf
-                            </Link>
-                            <Link href="#" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Leaf Grid
-                            </Link>
-                            <Link href="#" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Plantify
-                            </Link>
-                          </div>
-                        )}
-                      </div>
-                      <Link href="/about" className="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-600">
-                        About
-                      </Link>
-                      {/* <Link href="/blogs" className="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-600">
-                        Blog
-                      </Link> */}
-                      <div>
-                        <button 
-                          type='button'
-                          onClick={toggleMobileVendor}
-                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-600"
-                        >
-                          <span>Blogs</span>
-                            <ChevronRight className="size-4" />
-                        </button>
-                        {isMobileVendorOpen && (
-                          <div className="ml-4 mt-1 space-y-1 border-l border-gray-200 pl-3">
-                            <Link href="/blog/category/green-living" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Green Living 
-                            </Link>
-                            <Link href="/blog/category/plant-care-101" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Plant Care 101
-                            </Link>
-                            <Link href="/blog/category/indoor-jungle" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Indoor Jungle
-                            </Link>
-                            <Link href="/blog/category/seasonal-gardening" className="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600">
-                              Seasonal Gardening
-                            </Link>
-                          </div>
-                        )}
-                      </div>
-                      <Link href="/contact-us" className="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-600">
-                        Contact
-                      </Link>
-                    </div>
-                    {/* Contact Info */}
-                    <div className="mt-4 rounded-lg bg-green-50 p-3">
-                      <h3 className="mb-2 text-sm font-medium text-green-800">Need Help?</h3>
-                      <div className="flex items-center">
-                        <Phone className="mr-2 size-4 text-green-600" />
-                        <Link href="tel:+918331801000" className="text-sm font-medium text-green-700 hover:text-green-800">
-                          +91 833 180 1000
-                        </Link>
-                      </div>
-                    </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 text-sm leading-tight mb-1">{item.title}</h4>
+                    <p className="text-green-600 font-bold text-lg mb-3">{item.price}</p>
+                    <button 
+                      onClick={() => addWishlistItemToCart(item)}
+                      className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold shadow-md transform hover:scale-105"
+                    >
+                      Add to Cart
+                    </button>
                   </div>
+                  <button 
+                    onClick={() => removeFromWishlist(item.id)}
+                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-xl transition-colors duration-200"
+                    aria-label={`Remove ${item.title} from wishlist`}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-              </div>
+              ))}
             </div>
-          </>
-        )}
-        {/* Cart Drawer */}
-        {isCartOpen && (
-          <>
-            {/* Overlay */}
-            {/* * biome-ignore lint/a11y/noStaticElementInteractions: will look into this alatetrr */}
-            {/** biome-ignore lint/a11y/useKeyWithClickEvents: will look into while refactoring */}
-            <div 
-              className="fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity"
-              onClick={toggleCart}
-            ></div>
-            {/* Cart Drawer */}
-            <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md overflow-hidden bg-white shadow-xl transition-transform">
-              {/* Cart Header */}
-              <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
-                <h2 className="text-lg font-medium text-gray-900">Shopping Cart ({cartItems.length})</h2>
-                <button 
-                  type='button'
-                  onClick={toggleCart}
-                  className="rounded-full p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-500"
-                  aria-label="Close cart"
-                >
-                  <X className="size-6" />
-                </button>
-              </div>
-              {/* Cart Content */}
-              <div className="flex h-[calc(100%-60px)] flex-col">
-                {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  {cartItems.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center">
-                      <div className="rounded-full bg-gray-100 p-3">
-                        <ShoppingCart className="size-8 text-gray-400" />
-                      </div>
-                      <h3 className="mt-4 text-lg font-medium text-gray-900">Your cart is empty</h3>
-                      <p className="mt-1 text-center text-sm text-gray-500">
-                        Looks like you haven't added any plants to your cart yet.
-                      </p>
-                      <button
-                        type='button'
-                        onClick={toggleCart}
-                        className="mt-6 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                      >
-                        Continue Shopping
-                      </button>
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-gray-200">
-                      {cartItems.map((item) => (
-                        <li key={item.id} className="flex py-4">
-                          {/* Product Image */}
-                          <div className="relative size-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                            <Image
-                              src={item.image}
-                              alt={item.title}
-                              fill
-                              className="object-cover"
-                            />
-                            {item.tag && (
-                              <span className="absolute left-0 top-0 rounded-br-md bg-yellow-500 px-1.5 py-0.5 text-xs font-medium text-white">
-                                {item.tag}
-                              </span>
-                            )}
-                          </div>
-                          {/* Product Details */}
-                          <div className="ml-4 flex flex-1 flex-col">
-                            <div>
-                              <div className="flex justify-between text-base font-medium text-gray-900">
-                                <h3 className="text-sm">{item.title}</h3>
-                                <p className="ml-4 text-sm">{item.price}</p>
-                              </div>
-                            </div>
-                            <div className="flex flex-1 items-end justify-between">
-                              {/* Quantity Controls */}
-                              <div className="flex items-center rounded-md border border-gray-200">
-                                <button
-                                  type='button'
-                                  onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                                  className="rounded-l-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
-                                  disabled={item.quantity <= 1}
-                                >
-                                  <Minus className="size-4" />
-                                </button>
-                                <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                <button
-                                  type='button'
-                                  onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                                  className="rounded-r-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
-                                >
-                                  <Plus className="size-4" />
-                                </button>
-                              </div>
-                              {/* Remove Button */}
-                              <button
-                                type='button'
-                                onClick={() => removeFromCart(item.id)}
-                                className="text-xs font-medium text-red-600 hover:text-red-500"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {/* Cart Footer */}
-                {cartItems.length > 0 && (
-                  <div className="border-t border-gray-200 p-4">
-                    <div className="flex justify-between text-base font-medium text-gray-900">
-                      <p>Subtotal</p>
-                      <p>₹{calculateSubtotal().toFixed(2)}</p>
-                    </div>
-                    <p className="mt-0.5 text-sm text-gray-500">Shipping and taxes calculated at checkout.</p>
-                    <div className="mt-4">
-                      <Link
-                        href="/checkout"
-                        className="flex items-center justify-center rounded-md border border-transparent bg-green-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-green-700"
-                        onClick={closeDrawers}
-                      >
-                        Checkout
-                      </Link>
-                    </div>
-                    <div className="mt-2 flex justify-center text-center text-sm text-gray-500">
-                      <p>
-                        or{' '}
-                        <button
-                          type="button"
-                          className="font-medium text-green-600 hover:text-green-500"
-                          onClick={toggleCart}
-                        >
-                          Continue Shopping
-                          <span aria-hidden="true"> &rarr;</span>
-                        </button>
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+          )}
+        </div>
+      </MobileDrawer>
+
+      {/* Sign In Modal */}
+      {isSignInOpen && <SignIn isOpen={isSignInOpen} onClose={() => setIsSignInOpen(false)} />}
+
+      {/* Enhanced Mobile User Menu */}
+      {isUserMenuOpen && user && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsUserMenuOpen(false)}
+          />
+          <div className="fixed top-20 right-4 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 lg:hidden overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-green-100">
+              <p className="font-bold text-gray-900 text-lg">{user.full_name || 'User'}</p>
+              <p className="text-sm text-green-700 truncate">{user.email}</p>
             </div>
-          </>
-        )}
-        {/* Wishlist Drawer */}
-        {isWishlistOpen && (
-          <>
-            {/* Overlay */}
-            {/** biome-ignore lint/a11y/noStaticElementInteractions: will look into this later */}
-            {/** biome-ignore lint/a11y/useKeyWithClickEvents: will look into this later */}
-            <div 
-              className="fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity"
-              onClick={toggleWishlist}
-            ></div>
-            {/* Wishlist Drawer */}
-            <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md overflow-hidden bg-white shadow-xl transition-transform">
-              {/* Wishlist Header */}
-              <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
-                <h2 className="text-lg font-medium text-gray-900">Wishlist ({wishlistItems.length})</h2>
-                <button 
-                  type='button'
-                  onClick={toggleWishlist}
-                  className="rounded-full p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-500"
-                  aria-label="Close wishlist"
-                >
-                  <X className="size-6" />
-                </button>
-              </div>
-              {/* Wishlist Content */}
-              <div className="flex h-[calc(100%-60px)] flex-col">
-                {/* Wishlist Items */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  {wishlistItems.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center">
-                      <div className="rounded-full bg-gray-100 p-3">
-                        <Heart className="size-8 text-gray-400" />
-                      </div>
-                      <h3 className="mt-4 text-lg font-medium text-gray-900">Your wishlist is empty</h3>
-                      <p className="mt-1 text-center text-sm text-gray-500">
-                        Save your favorite plants for later.
-                      </p>
-                      <button
-                        type='button'
-                        onClick={toggleWishlist}
-                        className="mt-6 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                      >
-                        Continue Shopping
-                      </button>
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-gray-200">
-                      {wishlistItems.map((item) => (
-                        <li key={item.id} className="flex py-4">
-                          {/* Product Image */}
-                          <div className="relative size-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                            <Image
-                              src={item.image}
-                              alt={item.title}
-                              fill
-                              className="object-cover"
-                            />
-                            {item.tag && (
-                              <span className="absolute left-0 top-0 rounded-br-md bg-yellow-500 px-1.5 py-0.5 text-xs font-medium text-white">
-                                {item.tag}
-                              </span>
-                            )}
-                          </div>
-                          {/* Product Details */}
-                          <div className="ml-4 flex flex-1 flex-col">
-                            <div>
-                              <div className="flex justify-between text-base font-medium text-gray-900">
-                                <h3 className="text-sm">{item.title}</h3>
-                                <p className="ml-4 text-sm">{item.price}</p>
-                              </div>
-                            </div>
-                            <div className="flex flex-1 items-end justify-between">
-                              {/* Add to Cart Button */}
-                              <button
-                                type='button'
-                                onClick={() => addWishlistItemToCart(item)}
-                                className="rounded-md bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
-                              >
-                                Add to Cart
-                              </button>
-                              {/* Remove Button */}
-                              <button
-                                type='button'
-                                onClick={() => removeFromWishlist(item.id)}
-                                className="text-xs font-medium text-red-600 hover:text-red-500"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
+            <Link 
+              href="/account" 
+              className="flex items-center px-6 py-4 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200 group"
+              onClick={closeAllDrawers}
+            >
+              <User className="w-5 h-5 mr-3 text-green-600 group-hover:scale-110 transition-transform duration-200" />
+              <span className="font-medium">My Account</span>
+              <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            </Link>
+            <Link 
+              href="/orders" 
+              className="flex items-center px-6 py-4 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200 group"
+              onClick={closeAllDrawers}
+            >
+              <Package className="w-5 h-5 mr-3 text-green-600 group-hover:scale-110 transition-transform duration-200" />
+              <span className="font-medium">My Orders</span>
+              <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            </Link>
+            <div className="border-t border-gray-100 mt-2 pt-2">
+              <button 
+                onClick={handleSignOut}
+                className="w-full flex items-center px-6 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+              >
+                <LogOut className="mr-3 w-5 h-5" />
+                <span className="font-medium">Sign out</span>
+              </button>
             </div>
-          </>
-        )}
-        {/* Sign In Modal */}
-        {isSignInOpen && <SignIn isOpen={isSignInOpen} onClose={toggleSignIn} />}
-      </nav>
-      {/* Spacer to prevent content from being hidden under the fixed navbar */}
-      <div className={`h-16 md:h-20 ${isClient ? '' : 'invisible'}`}></div>
+          </div>
+        </>
+      )}
+
+      {/* Dynamic Spacer */}
+      <div className={`transition-all duration-300 ${
+        isScrolled ? 'h-28 lg:h-32' : 'h-32 lg:h-40'
+      }`}></div>
+
+      {/* Enhanced CSS Styles */}
+      <style jsx global>{`
+        /* Scrollbar hiding */
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        /* Enhanced backdrop blur */
+        .backdrop-blur-lg {
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+        
+        /* Smooth transitions */
+        * {
+          transition-property: color, background-color, border-color, transform, opacity, box-shadow;
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Enhanced animations */
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-2px); }
+        }
+        
+        @keyframes pulse-glow {
+          0%, 100% { 
+            transform: scale(1); 
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+          }
+          50% { 
+            transform: scale(1.05); 
+            box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+          }
+        }
+        
+        .animate-float:hover {
+          animation: float 2s ease-in-out infinite;
+        }
+        
+        .animate-pulse-glow {
+          animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        /* Focus states for accessibility */
+        .focus-ring:focus-visible {
+          outline: 2px solid #10b981;
+          outline-offset: 2px;
+          border-radius: 8px;
+        }
+        
+        /* Prevent layout shift */
+        .layout-stable {
+          contain: layout style paint;
+        }
+        
+        /* Enhanced hover effects */
+        .hover-lift {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Responsive text sizing */
+        @media (max-width: 768px) {
+          .responsive-text {
+            font-size: 0.875rem;
+          }
+        }
+        
+        /* Enhanced dropdown shadows */
+        .dropdown-shadow {
+          box-shadow: 
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04),
+            0 0 0 1px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Gradient text effects */
+        .gradient-text {
+          background: linear-gradient(135deg, #059669, #10b981);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        /* Mobile touch targets */
+        @media (max-width: 768px) {
+          .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+          }
+        }
+        
+        /* Prevent zoom on input focus for iOS */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) {
+          select, textarea, input[type="text"], input[type="password"], 
+          input[type="datetime"], input[type="datetime-local"], 
+          input[type="date"], input[type="month"], input[type="time"], 
+          input[type="week"], input[type="number"], input[type="email"], 
+          input[type="url"], input[type="search"], input[type="tel"] {
+            font-size: 16px !important;
+          }
+        }
+        
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+          .border-gray-200 {
+            border-color: #000000;
+          }
+          .text-gray-700 {
+            color: #000000;
+          }
+          .bg-white {
+            background-color: #ffffff;
+          }
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+        
+        /* Print styles */
+        @media print {
+          .fixed, .sticky {
+            position: static !important;
+          }
+          .shadow-xl, .shadow-2xl {
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
     </>
   );
 }
