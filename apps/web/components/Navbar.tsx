@@ -75,7 +75,7 @@ const navigationData = {
   }
 };
 
-// Interfaces
+// Updated interfaces to handle optional fields and type compatibility
 interface Product {
   id: string;
   title: string;
@@ -87,6 +87,16 @@ interface Product {
 
 interface CartItem extends Product {
   quantity: number;
+}
+
+// New interface for WishlistItem to handle optional fields
+interface WishlistItem {
+  id: string;
+  title?: string; // Made optional to match the error
+  price?: string | number; // Made optional and flexible type
+  image: string;
+  tag?: string;
+  numericPrice?: number; // Made optional
 }
 
 interface UserProfile {
@@ -105,8 +115,9 @@ function Navbar() {
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [activeCategoryDropdown, setActiveCategoryDropdown] = useState<string | null>(null);
-  const [cartItems, setCartItems] = useState<CartItem[] >([]);
-  const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // Fixed: Use WishlistItem[] instead of Product[] for wishlist
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -169,38 +180,121 @@ function Navbar() {
   useEffect(() => {
     setIsClient(true);
     const { cartItems: initialCartItems, wishlistItems: initialWishlistItems } = loadCartAndWishlist();
-    setCartItems(initialCartItems);
-    setWishlistItems(initialWishlistItems);
+    
+    // Type assertions with proper error handling
+    const safeCartItems: CartItem[] = Array.isArray(initialCartItems) ? 
+      initialCartItems.map((item: any) => ({
+        id: item.id || '',
+        title: item.title || '',
+        price: item.price || '0',
+        image: item.image || '',
+        tag: item.tag,
+        numericPrice: item.numericPrice || 0,
+        quantity: item.quantity || 1
+      })) : [];
+
+    const safeWishlistItems: WishlistItem[] = Array.isArray(initialWishlistItems) ? 
+      initialWishlistItems.map((item: any) => ({
+        id: item.id || '',
+        title: item.title,
+        price: item.price,
+        image: item.image || '',
+        tag: item.tag,
+        numericPrice: item.numericPrice
+      })) : [];
+
+    setCartItems(safeCartItems);
+    setWishlistItems(safeWishlistItems);
     checkUserSession();
 
     const handleCartUpdate = (event: CustomEvent) => {
       if (event.detail) {
-        setCartItems(event.detail);
+        const safeDetail: CartItem[] = Array.isArray(event.detail) ?
+          event.detail.map((item: any) => ({
+            id: item.id || '',
+            title: item.title || '',
+            price: item.price || '0',
+            image: item.image || '',
+            tag: item.tag,
+            numericPrice: item.numericPrice || 0,
+            quantity: item.quantity || 1
+          })) : [];
+        setCartItems(safeDetail);
       } else {
         const { cartItems: updatedCartItems } = loadCartAndWishlist();
-        setCartItems(updatedCartItems);
+        const safeUpdatedCartItems: CartItem[] = Array.isArray(updatedCartItems) ?
+          updatedCartItems.map((item: any) => ({
+            id: item.id || '',
+            title: item.title || '',
+            price: item.price || '0',
+            image: item.image || '',
+            tag: item.tag,
+            numericPrice: item.numericPrice || 0,
+            quantity: item.quantity || 1
+          })) : [];
+        setCartItems(safeUpdatedCartItems);
       }
     };
     
     const handleWishlistUpdate = (event: CustomEvent) => {
       if (event.detail) {
-        setWishlistItems(event.detail);
+        const safeDetail: WishlistItem[] = Array.isArray(event.detail) ?
+          event.detail.map((item: any) => ({
+            id: item.id || '',
+            title: item.title,
+            price: item.price,
+            image: item.image || '',
+            tag: item.tag,
+            numericPrice: item.numericPrice
+          })) : [];
+        setWishlistItems(safeDetail);
       } else {
         const { wishlistItems: updatedWishlistItems } = loadCartAndWishlist();
-        setWishlistItems(updatedWishlistItems);
+        const safeUpdatedWishlistItems: WishlistItem[] = Array.isArray(updatedWishlistItems) ?
+          updatedWishlistItems.map((item: any) => ({
+            id: item.id || '',
+            title: item.title,
+            price: item.price,
+            image: item.image || '',
+            tag: item.tag,
+            numericPrice: item.numericPrice
+          })) : [];
+        setWishlistItems(safeUpdatedWishlistItems);
       }
     };
     
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'plantomartCart' || event.key === 'plantomartWishlist') {
         const { cartItems: updatedCartItems, wishlistItems: updatedWishlistItems } = loadCartAndWishlist();
-        setCartItems(updatedCartItems);
-        setWishlistItems(updatedWishlistItems);
+        
+        const safeUpdatedCartItems: CartItem[] = Array.isArray(updatedCartItems) ?
+          updatedCartItems.map((item: any) => ({
+            id: item.id || '',
+            title: item.title || '',
+            price: item.price || '0',
+            image: item.image || '',
+            tag: item.tag,
+            numericPrice: item.numericPrice || 0,
+            quantity: item.quantity || 1
+          })) : [];
+
+        const safeUpdatedWishlistItems: WishlistItem[] = Array.isArray(updatedWishlistItems) ?
+          updatedWishlistItems.map((item: any) => ({
+            id: item.id || '',
+            title: item.title,
+            price: item.price,
+            image: item.image || '',
+            tag: item.tag,
+            numericPrice: item.numericPrice
+          })) : [];
+
+        setCartItems(safeUpdatedCartItems);
+        setWishlistItems(safeUpdatedWishlistItems);
       }
     };
 
-    window.addEventListener('cartUpdated', handleCartUpdate);
-    window.addEventListener('wishlistUpdated', handleWishlistUpdate);
+    window.addEventListener('cartUpdated', handleCartUpdate as EventListener);
+    window.addEventListener('wishlistUpdated', handleWishlistUpdate as EventListener);
     window.addEventListener('storage', handleStorageChange);
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -214,8 +308,8 @@ function Navbar() {
     );
     
     return () => {
-      window.removeEventListener('cartUpdated', handleCartUpdate);
-      window.removeEventListener('wishlistUpdated', handleWishlistUpdate);
+      window.removeEventListener('cartUpdated', handleCartUpdate as EventListener);
+      window.removeEventListener('wishlistUpdated', handleWishlistUpdate as EventListener);
       window.removeEventListener('storage', handleStorageChange);
       subscription.unsubscribe();
     };
@@ -317,21 +411,43 @@ function Navbar() {
     return count > 9 ? "9+" : count.toString();
   };
   
-  // Handlers for cart and wishlist operations using the helper functions
+  // Fixed handlers with proper type handling
   const handleUpdateCartQuantity = (id: string, newQuantity: number) => {
-    setCartItems(prevItems => updateCartQuantity(prevItems, id, newQuantity));
+    const result:any = updateCartQuantity(cartItems, id, newQuantity);
+    if (Array.isArray(result)) {
+      setCartItems(result);
+    }
   };
   
   const handleRemoveFromCart = (id: string) => {
-    setCartItems(prevItems => removeFromCart(prevItems, id));
+    const result:any = removeFromCart(cartItems, id);
+    if (Array.isArray(result)) {
+      setCartItems(result);
+    }
   };
   
-  const handleAddWishlistItemToCart = (item: any) => {
-    setCartItems(prevItems => addWishlistItemToCart(prevItems, item));
+  const handleAddWishlistItemToCart = (item: WishlistItem) => {
+    // Convert WishlistItem to CartItem format
+    const cartItem: CartItem = {
+      id: item.id,
+      title: item.title || '',
+      price: typeof item.price === 'string' ? item.price : (item.price?.toString() || '0'),
+      image: item.image,
+      tag: item.tag,
+      numericPrice: item.numericPrice || 0,
+      quantity: 1
+    };
+    const result:any = addWishlistItemToCart(cartItems, cartItem);
+    if (Array.isArray(result)) {
+      setCartItems(result);
+    }
   };
   
   const handleRemoveFromWishlist = (id: string) => {
-    setWishlistItems(prevItems => removeFromWishlist(prevItems, id));
+    const result:any = removeFromWishlist(wishlistItems, id);
+    if (Array.isArray(result)) {
+      setWishlistItems(result);
+    }
   };
 
   // Smart dropdown positioning function
@@ -1249,14 +1365,14 @@ function Navbar() {
                   <div className="relative w-20 h-20 bg-gray-200 rounded-xl overflow-hidden">
                     <Image
                       src={item.image}
-                      alt={item.title}
+                      alt={item.title || 'Product'}
                       fill
                       className="object-cover"
                     />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 text-sm leading-tight mb-1">{item.title}</h4>
-                    <p className="text-green-600 font-bold text-lg mb-3">{item.price}</p>
+                    <h4 className="font-semibold text-gray-900 text-sm leading-tight mb-1">{item.title || 'Product'}</h4>
+                    <p className="text-green-600 font-bold text-lg mb-3">{typeof item.price === 'string' ? item.price : `₹${item.price || 0}`}</p>
                     <button 
                       onClick={() => handleAddWishlistItemToCart(item)}
                       className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold shadow-md transform hover:scale-105"
@@ -1267,7 +1383,7 @@ function Navbar() {
                   <button 
                     onClick={() => handleRemoveFromWishlist(item.id)}
                     className="p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-xl transition-colors duration-200"
-                    aria-label={`Remove ${item.title} from wishlist`}
+                    aria-label={`Remove ${item.title || 'item'} from wishlist`}
                   >
                     <X className="w-5 h-5" />
                   </button>

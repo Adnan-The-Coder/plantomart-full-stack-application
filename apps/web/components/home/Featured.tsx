@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
 import { API_ENDPOINTS } from '@/config/api';
 import { updateCartQuantity, removeFromCart, addWishlistItemToCart, removeFromWishlist, addToWishlist, safeLocalStorage } from '@/helpers/cart-and-wishlist/CRUD-Wishlist-and-Cart';
+import { CartItem as CartItemType, WishlistItem as WishlistItemType } from '@/types/Cart';
 
 // Utility for localStorage with expiry
 const setWithExpiry = (key: string, value: any, ttl: number) => {
@@ -35,7 +36,8 @@ const getWithExpiry = (key: string) => {
   }
 };
 
-interface Product {
+// Define a Product type that's compatible with both Cart and Wishlist items
+type Product = {
   product_id: string;
   title: string;
   price: number;
@@ -46,11 +48,45 @@ interface Product {
   brand: string;
   featured: boolean;
   category: string;
-}
+  id?: string;
+};
 
-interface CartItem extends Product {
-  quantity: number;
-}
+// Helper functions to ensure type compatibility
+const productToCartItem = (product: Product): CartItemType => {
+  return {
+    ...product,
+    id: product.id || product.product_id,
+    product_id: product.product_id,
+    title: product.title,
+    price: product.price,
+    image_gallery: product.image_gallery,
+    quantity: 1
+  } as CartItemType;
+};
+
+const productToWishlistItem = (product: Product): WishlistItemType => {
+  return {
+    ...product,
+    id: product.id || product.product_id,
+    product_id: product.product_id,
+    title: product.title,
+    price: product.price,
+    image_gallery: product.image_gallery
+  } as WishlistItemType;
+};
+
+// Type guards to check if items have required fields
+const isValidCartItem = (item: any): item is CartItemType => {
+  return item && typeof item.product_id === 'string' && typeof item.title === 'string';
+};
+
+const isValidWishlistItem = (item: any): item is WishlistItemType => {
+  return item && typeof item.product_id === 'string' && typeof item.title === 'string';
+};
+
+// Use CartItemType and WishlistItemType directly from imports
+type CartItem = CartItemType;
+type WishlistItem = WishlistItemType;
 
 interface PaginationInfo {
   currentPage: number;
@@ -66,7 +102,7 @@ const formatIndianPrice = (price: number) => {
 function Featured() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,21 +183,30 @@ function Featured() {
       fetchFeaturedProducts(1, false);
     }
     
-    // Cart/wishlist initialization
+    // Cart initialization with type validation
     try {
       const storedCart = localStorage.getItem('plantomartCart');
       if (storedCart) {
-        setCartItems(JSON.parse(storedCart));
+        const parsedCart = JSON.parse(storedCart);
+        if (Array.isArray(parsedCart)) {
+          const validCartItems = parsedCart.filter(isValidCartItem);
+          setCartItems(validCartItems);
+        }
       }
     } catch (error) {
       console.error('Error loading cart:', error);
       // Don't remove the cart data, as it might be a temporary error
     }
     
+    // Wishlist initialization with type validation
     try {
       const storedWishlist = localStorage.getItem('plantomartWishlist');
       if (storedWishlist) {
-        setWishlistItems(JSON.parse(storedWishlist));
+        const parsedWishlist = JSON.parse(storedWishlist);
+        if (Array.isArray(parsedWishlist)) {
+          const validWishlistItems = parsedWishlist.filter(isValidWishlistItem);
+          setWishlistItems(validWishlistItems);
+        }
       }
     } catch (error) {
       console.error('Error loading wishlist:', error);
@@ -169,9 +214,7 @@ function Featured() {
     }
   }, []);
 
-  // Cart and wishlist are now managed by the helper functions
-  // No need to manually update localStorage here, as the helper functions handle it
-  // We only need to dispatch events for other components to listen to
+  // Dispatch cart update events
   useEffect(() => {
     if (isClient && cartItems.length >= 0) {
       const event = new CustomEvent('cartUpdated', { detail: cartItems });
@@ -179,7 +222,7 @@ function Featured() {
     }
   }, [cartItems, isClient]);
 
-  // Update events when wishlist changes
+  // Dispatch wishlist update events
   useEffect(() => {
     if (isClient && wishlistItems.length >= 0) {
       const event = new CustomEvent('wishlistUpdated', { detail: wishlistItems });
@@ -187,23 +230,28 @@ function Featured() {
     }
   }, [wishlistItems, isClient]);
 
-  const isInCart = (productId: string): boolean => cartItems.some(item => item.product_id === productId);
-  const isInWishlist = (productId: string): boolean => wishlistItems.some(item => item.product_id === productId);
+  const isInCart = (productId: string): boolean => {
+    return cartItems.some(item => item.product_id === productId);
+  };
+
+  const isInWishlist = (productId: string): boolean => {
+    return wishlistItems.some(item => item.product_id === productId);
+  };
 
   const toggleCart = (product: Product) => {
     setLoadingCart(product.product_id);
     setTimeout(() => {
       setCartItems(prevItems => {
         const existingItemIndex = prevItems.findIndex(item => item.product_id === product.product_id);
+        
         if (existingItemIndex >= 0) {
           // Remove from cart using helper function
           const newItems = removeFromCart(prevItems, product.product_id);
           setTimeout(() => toast.success(`${product.title} removed from cart`), 0);
           return newItems;
         } else {
-          // Add to cart using a modified version of addWishlistItemToCart
-          // Since we're not adding from wishlist, we create a cart item first
-          const cartItem = { ...product, quantity: 1 };
+          // Add to cart - convert Product to CartItem first
+          const cartItem = productToCartItem(product);
           const newItems = addWishlistItemToCart(prevItems, cartItem);
           setTimeout(() => toast.success(`${product.title} added to cart`), 0);
           return newItems;
@@ -218,14 +266,16 @@ function Featured() {
     setTimeout(() => {
       setWishlistItems(prevItems => {
         const existingItemIndex = prevItems.findIndex(item => item.product_id === product.product_id);
+        
         if (existingItemIndex >= 0) {
           // Remove from wishlist using helper function
           const newItems = removeFromWishlist(prevItems, product.product_id);
           setTimeout(() => toast.success(`${product.title} removed from wishlist`), 0);
           return newItems;
         } else {
-          // Add to wishlist using the new helper function
-          const newItems = addToWishlist(prevItems, product);
+          // Add to wishlist - convert Product to WishlistItem first
+          const wishlistItem = productToWishlistItem(product);
+          const newItems = addToWishlist(prevItems, wishlistItem);
           setTimeout(() => toast.success(`${product.title} added to wishlist`), 0);
           return newItems;
         }
