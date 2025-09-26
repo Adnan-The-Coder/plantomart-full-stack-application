@@ -1110,7 +1110,7 @@ function Navbar() {
           <div className="space-y-2">
             {[
               { name: 'Home', href: '/', icon: Home },
-              { name: 'Vendors', href: '/vendors', icon: Store },
+              { name: 'Vendors', href: '/vendor', icon: Store },
               { name: 'About', href: '/about', icon: Building2 },
               { name: 'Blog', href: '/blog', icon: BookOpen },
               { name: 'Contact', href: '/contact', icon: MessageCircle },
