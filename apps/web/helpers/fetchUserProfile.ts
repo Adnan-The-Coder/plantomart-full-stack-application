@@ -18,6 +18,8 @@ const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => 
           email: json.data.email || '',
           full_name: json.data.full_name || json.data.name,
           avatar_url: json.data.avatar_url || json.data.profile_image,
+          phone: json.data.phone,
+          user_uuid: userId
         };
       }
     }
@@ -32,6 +34,8 @@ const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => 
         avatar_url:
           user.user_metadata?.avatar_url ||
           user.identities?.[0]?.identity_data?.avatar_url,
+        phone: user.user_metadata.phone,
+        user_uuid: userId
       };
     }
 
@@ -47,6 +51,8 @@ const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => 
         avatar_url:
           user.user_metadata?.avatar_url ||
           user.identities?.[0]?.identity_data?.avatar_url,
+        phone: user.user_metadata.phone,
+        user_uuid: userId
       };
     }
   }

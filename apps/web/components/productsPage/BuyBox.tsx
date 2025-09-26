@@ -1,16 +1,21 @@
-import React from 'react'
+import React, { useEffect, useCallback } from 'react'
 import { MinusCircle, PlusCircle, Heart, ShieldCheck, Truck, MapPin, Store, Leaf, Award, Check, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import ProductDataType from '@/types/ProductData'
 import { useState } from 'react'
 import { API_ENDPOINTS } from '@/config/api'
 import { supabase } from '@/utils/supabase/client'
+import { UserProfile } from '@/types/user'
+import fetchUserProfile from '@/helpers/fetchUserProfile'
+import SignIn from '../auth/Sign-in'
 
 type VendorData = {
   name?: string
   business_name?: string
   slug: string
   is_verified?: number
+  vendor_id?: string
 }
 
 type BuyBoxProps = {
@@ -40,7 +45,6 @@ const BuyBox: React.FC<BuyBoxProps> = ({
   quantity,
   onQuantityChange,
   onAddToCart,
-  // onBuyNow,
   onAddToWishlist,
   inputId = 'quantity-input',
   deliveryDate = 'Tuesday, 27 May',
@@ -50,10 +54,15 @@ const BuyBox: React.FC<BuyBoxProps> = ({
   loadingCart = false,
   loadingWishlist = false,
 }) => {
+  const router = useRouter()
   const { price, discountPrice, discountPercent, quantity: stockQty, brand } = product
 
-    const [isProcessing, setIsProcessing] = useState(false);
-  
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isSignInOpen, setIsSignInOpen] = useState(false)
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [currentPageUrl, setCurrentPageUrl] = useState('')
+
   // Calculate the current effective price per unit
   const pricePerUnit = discountPrice ?? price
   const originalPricePerUnit = price
@@ -63,117 +72,296 @@ const BuyBox: React.FC<BuyBoxProps> = ({
   const totalOriginalPrice = originalPricePerUnit * quantity
   const totalSavings = discountPrice ? (totalOriginalPrice - totalPrice) : 0
 
-  const handlePayment = async (amount: number, productName: string) => {
-    if (amount <= 0) return;
+  // Get current page URL
+  const getCurrentPageUrl = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.href
+    }
+    return ''
+  }, [])
 
-    setIsProcessing(true);
+  // Check user authentication status
+  const checkUserSession = useCallback(async () => {
+    try {
+      setIsCheckingAuth(true)
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('Session error:', error)
+        setUser(null)
+        return
+      }
+
+      if (session?.user) {
+        const profile = await fetchUserProfile(session.user.id)
+        setUser(profile)
+      } else {
+        setUser(null)
+      }
+    } catch (error) {
+      console.error('Error checking user session:', error)
+      setUser(null)
+    } finally {
+      setIsCheckingAuth(false)
+    }
+  }, [])
+
+  // Initialize component
+  useEffect(() => {
+    setCurrentPageUrl(getCurrentPageUrl())
+    checkUserSession()
+  }, [checkUserSession, getCurrentPageUrl])
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const profile = await fetchUserProfile(session.user.id)
+        setUser(profile)
+        setIsSignInOpen(false)
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Check if user is authenticated
+  const isAuthenticated = !!user
+
+  // Handle authentication requirement
+  const requireAuth = useCallback((action: () => void | Promise<void>) => {
+    if (!isAuthenticated && !isCheckingAuth) {
+      setIsSignInOpen(true)
+      return
+    }
+    
+    if (isAuthenticated) {
+      action()
+    }
+  }, [isAuthenticated, isCheckingAuth])
+
+  // Enhanced Add to Cart with auth check
+  const handleAddToCart = useCallback(() => {
+    requireAuth(() => {
+      onAddToCart()
+    })
+  }, [onAddToCart, requireAuth])
+
+  // Enhanced Add to Wishlist with auth check
+  const handleAddToWishlist = useCallback(() => {
+    requireAuth(() => {
+      onAddToWishlist()
+    })
+  }, [onAddToWishlist, requireAuth])
+
+  // Enhanced Payment handling with robust auth and error handling
+  const handlePayment = useCallback(async (amount: number, productName: string) => {
+    if (!isAuthenticated && !isCheckingAuth) {
+      setIsSignInOpen(true)
+      return
+    }
+
+    if (amount <= 0) {
+      alert('Invalid amount. Please check your selection.')
+      return
+    }
+
+    if (!user) {
+      alert('Please sign in to continue with your purchase.')
+      setIsSignInOpen(true)
+      return
+    }
+
+    setIsProcessing(true)
 
     try {
-      // Create order directly
-      const res = await fetch('/api/razorpay/createOrder', {
+      // Validate required data
+      if (!product.product_id) {
+        throw new Error('Product information is missing')
+      }
+
+      // Create order
+      const orderResponse = await fetch('/api/razorpay/createOrder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amount: amount * 100 }),
-      });
+        body: JSON.stringify({ 
+          amount: Math.round(amount * 100),
+          currency: 'INR',
+          receipt: `order_${product.product_id}_${Date.now()}`,
+          notes: {
+            product_id: product.product_id,
+            product_title: productName,
+            quantity: quantity.toString(),
+            user_id: user.user_uuid
+          }
+        }),
+      })
       
-      const data:any = await res.json();
+      if (!orderResponse.ok) {
+        throw new Error(`Failed to create order: ${orderResponse.statusText}`)
+      }
       
-      // Setup Razorpay payment
-      const PaymentData = {
-        key: process.env.RAZORPAY_LIVE_KEY_ID,
-        amount: amount * 100,
+      const orderData:any = await orderResponse.json()
+      
+      if (!orderData.id) {
+        throw new Error('Invalid order response')
+      }
+
+      // Verify Razorpay key is available
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_LIVE_KEY_ID
+      console.log("Razorpay key is:", razorpayKey)
+      if (!razorpayKey) {
+        throw new Error('Payment configuration error')
+      }
+
+      // Setup Razorpay payment options
+      const paymentOptions = {
+        key: razorpayKey,
+        amount: Math.round(amount * 100),
         currency: "INR",
-        name: "payNex",
-        description: "Payment testing or support",
-        order_id: data.id,
-        
+        name: "PlantoMart",
+        description: `Purchase of ${productName}`,
+        order_id: orderData.id,
         handler: async function (response: any) {
-          // Verify payment
-          const res = await fetch("/api/razorpay/verifyOrder", {
-            method: "POST",
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              orderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }),
-          });
-          
-          const data:any = await res.json();
-          
-          if (data.isOk) {
-            // Payment successful - 
-            alert("Payment successful!");
-            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              const user_uuid = session?.user?.id;
-              if (!user_uuid) throw new Error('Not authenticated');
-              const vendor_id = (vendorData as any)?.vendor_id || (product as any)?.vendorID;
-              const orderPayload = {
-                user_uuid,
-                vendor_id,
-                items: [
-                  {
-                    product_id: product.product_id,
-                    product_title: product.title,
-                    quantity,
-                    unit_price: pricePerUnit
-                  }
-                ],
-                total_amount: Math.round(pricePerUnit * quantity),
-                currency: 'INR',
-                payment_id: response.razorpay_payment_id,
-                payment_method: 'razorpay',
-                payment_status: 'paid',
-                notes: `Razorpay order: ${response.razorpay_order_id}`
-              };
-              await fetch(API_ENDPOINTS.createOrder, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderPayload)
-              });
-            } catch (e) {
-              console.error('Failed to create order record:', e);
+          try {
+            // Verify payment
+            const verifyResponse = await fetch("/api/razorpay/verifyOrder", {
+              method: "POST",
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              }),
+            })
+            
+            if (!verifyResponse.ok) {
+              throw new Error('Payment verification failed')
             }
-          } else {
-            alert("Payment failed");
+            
+            const verificationData:any = await verifyResponse.json()
+            
+            if (verificationData.isOk) {
+              // Create order record
+              try {
+                const vendor_id = vendorData?.vendor_id || (product as any)?.vendorID
+                
+                const orderPayload = {
+                  user_uuid: user.user_uuid,
+                  vendor_id,
+                  items: [
+                    {
+                      product_id: product.product_id,
+                      product_title: product.title,
+                      quantity,
+                      unit_price: pricePerUnit
+                    }
+                  ],
+                  total_amount: Math.round(amount),
+                  currency: 'INR',
+                  payment_id: response.razorpay_payment_id,
+                  payment_method: 'razorpay',
+                  payment_status: 'paid',
+                  order_id: response.razorpay_order_id,
+                  notes: `Razorpay order: ${response.razorpay_order_id}`,
+                  created_at: new Date().toISOString()
+                }
+
+                const orderCreateResponse = await fetch(API_ENDPOINTS.createOrder, {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    // 'Authorization': `Bearer ${user.user_uuid}` // If your API requires auth
+                  },
+                  body: JSON.stringify(orderPayload)
+                })
+
+                if (!orderCreateResponse.ok) {
+                  console.error('Failed to create order record')
+                  // Still show success since payment went through
+                }
+
+                // Success feedback
+                alert("🎉 Payment successful! Your order has been confirmed.")
+                
+                // Optionally redirect to order confirmation page
+                // router.push(`/orders/${response.razorpay_order_id}`)
+                
+              } catch (orderError) {
+                console.error('Failed to create order record:', orderError)
+                alert("Payment successful, but there was an issue recording your order. Please contact support.")
+              }
+            } else {
+              throw new Error('Payment verification failed')
+            }
+          } catch (error) {
+            console.error('Payment handler error:', error)
+            alert("There was an issue processing your payment. Please contact support if amount was debited.")
           }
         },
         prefill: {
-          name: "payNex",
+          name: user.full_name || user.email || "Customer",
+          email: user.email || "",
+          contact: user.phone || ""
         },
         theme: {
-          color: "#6366f1",
+          color: "#16a34a", // Green theme to match PlantoMart
         },
         modal: {
           ondismiss: function() {
-            setIsProcessing(false);
-          }
+            setIsProcessing(false)
+            console.log('Payment modal dismissed')
+          },
+          escape: true,
+          backdropclose: false
+        },
+        retry: {
+          enabled: true,
+          max_count: 3
         }
-      };
+      }
 
-      // Check if Razorpay is loaded
+      // Initialize Razorpay payment
       if (typeof window !== 'undefined' && (window as any).Razorpay) {
-        const payment = new (window as any).Razorpay(PaymentData);
-        payment.open();
+        const razorpay = new (window as any).Razorpay(paymentOptions)
+        
+        razorpay.on('payment.failed', function (response: any) {
+          console.error('Payment failed:', response.error)
+          alert(`Payment failed: ${response.error.description || 'Unknown error'}`)
+          setIsProcessing(false)
+        })
+        
+        razorpay.open()
       } else {
-        throw new Error('Razorpay SDK not loaded');
+        throw new Error('Payment system is not available. Please refresh the page and try again.')
       }
       
-      // Reset processing state after Razorpay modal opens
-      setIsProcessing(false);
-        
     } catch (error) {
-        console.error("Payment error:", error);
-        alert("There was an error processing your payment. Please try again.");
-        setIsProcessing(false);
+      console.error("Payment error:", error)
+      const errorMessage = error instanceof Error ? error.message : "There was an error processing your payment. Please try again."
+      alert(errorMessage)
+    } finally {
+      // Only reset if payment modal didn't open successfully
+      setTimeout(() => setIsProcessing(false), 1000)
     }
-    
-  };
+  }, [isAuthenticated, isCheckingAuth, user, product, quantity, pricePerUnit, vendorData])
+
+  // Handle Buy Now button click
+  const handleBuyNow = useCallback(() => {
+    const amount = Math.round(pricePerUnit * quantity)
+    handlePayment(amount, product.title)
+  }, [pricePerUnit, quantity, product.title, handlePayment])
+
+  // Close sign in modal
+  const handleCloseSignIn = useCallback(() => {
+    setIsSignInOpen(false)
+  }, [])
 
   return (
     <div className="lg:col-span-3">
@@ -225,6 +413,16 @@ const BuyBox: React.FC<BuyBoxProps> = ({
               <span className="font-semibold text-green-700">{deliveryDate}</span>
             </div>
           </div>
+
+          {/* Authentication status indicator */}
+          {!isAuthenticated && !isCheckingAuth && (
+            <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+              <div className="flex items-center space-x-2 text-yellow-800">
+                <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                <span className="text-sm font-medium">Sign in required for purchase</span>
+              </div>
+            </div>
+          )}
 
           {/* Stock Status with visual indicator */}
           <div className="mb-4 flex items-center justify-between rounded-lg bg-white p-3 shadow-sm">
@@ -281,16 +479,16 @@ const BuyBox: React.FC<BuyBoxProps> = ({
             {/* Add to Cart Button */}
             <button
               type="button"
-              onClick={onAddToCart}
-              disabled={stockQty <= 0}
+              onClick={handleAddToCart}
+              disabled={stockQty <= 0 || isCheckingAuth}
               className={`group relative w-full overflow-hidden rounded-xl py-4 text-lg font-semibold shadow-lg transition-all duration-300 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-lg ${isInCart ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 hover:from-yellow-500 hover:to-yellow-600'}`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:animate-pulse group-hover:opacity-20" />
               <span className="relative flex items-center justify-center space-x-2">
-                {loadingCart ? (
+                {loadingCart || isCheckingAuth ? (
                   <>
                     <Loader2 className="mr-2 size-5 animate-spin" />
-                    <span>Processing...</span>
+                    <span>{isCheckingAuth ? 'Loading...' : 'Processing...'}</span>
                   </>
                 ) : isInCart ? (
                   <>
@@ -300,7 +498,7 @@ const BuyBox: React.FC<BuyBoxProps> = ({
                 ) : (
                   <>
                     <span className="text-xl">🛒</span>
-                    <span>Add to Cart</span>
+                    <span>{!isAuthenticated && !isCheckingAuth ? 'Sign in to Add to Cart' : 'Add to Cart'}</span>
                   </>
                 )}
               </span>
@@ -309,32 +507,49 @@ const BuyBox: React.FC<BuyBoxProps> = ({
             {/* Buy Now Button */}
             <button
               type="button"
-              onClick={() => handlePayment(Math.round(pricePerUnit * quantity), product.title)}
-              disabled={stockQty <= 0}
+              onClick={handleBuyNow}
+              disabled={stockQty <= 0 || isProcessing || isCheckingAuth}
               className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:from-green-600 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:animate-pulse group-hover:opacity-20" />
               <span className="relative flex items-center justify-center space-x-2">
-                <span className="text-xl">⚡</span>
-                <span>Buy Now</span>
+                {isProcessing || isCheckingAuth ? (
+                  <>
+                    <Loader2 className="mr-2 size-5 animate-spin" />
+                    <span>{isCheckingAuth ? 'Loading...' : 'Processing...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xl">⚡</span>
+                    <span>{!isAuthenticated && !isCheckingAuth ? 'Sign in to Buy Now' : 'Buy Now'}</span>
+                  </>
+                )}
               </span>
             </button>
 
             {/* Wishlist Button */}
             <button
               type="button"
-              onClick={onAddToWishlist}
+              onClick={handleAddToWishlist}
+              disabled={isCheckingAuth}
               className={`group flex w-full items-center justify-center space-x-2 rounded-xl border-2 py-4 text-base font-medium transition-all duration-300 ${isInWishlist ? 'border-pink-300 bg-pink-50 text-pink-700' : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700'}`}
             >
-              {loadingWishlist ? (
+              {loadingWishlist || isCheckingAuth ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  <span>Processing...</span>
+                  <span>{isCheckingAuth ? 'Loading...' : 'Processing...'}</span>
                 </>
               ) : (
                 <>
                   <Heart className={`h-5 w-5 transition-colors ${isInWishlist ? 'fill-pink-500 text-pink-500' : 'group-hover:text-pink-500'}`} />
-                  <span>{isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}</span>
+                  <span>
+                    {!isAuthenticated && !isCheckingAuth 
+                      ? 'Sign in to Add to Wishlist' 
+                      : isInWishlist 
+                        ? 'Remove from Wishlist' 
+                        : 'Add to Wishlist'
+                    }
+                  </span>
                 </>
               )}
             </button>
@@ -389,8 +604,17 @@ const BuyBox: React.FC<BuyBoxProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* Sign In Modal */}
+      {isSignInOpen && (
+        <SignIn 
+          isOpen={isSignInOpen} 
+          onClose={handleCloseSignIn} 
+          redirectUrl={currentPageUrl}
+        />
+      )}
     </div>
   )
 }
 
-export default BuyBox;
+export default BuyBox
