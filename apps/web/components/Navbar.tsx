@@ -44,7 +44,7 @@ const navigationData = {
     { name: 'Surface Gauge', href: '#', disabled: true, comingSoon: true }
   ],
   vendorActions: [
-    { name: 'Browse Vendors', href: '/vendors', icon: Store },
+    { name: 'Browse Vendors', href: '/vendor', icon: Store },
     { name: 'Start Selling', href: '/vendor/register', icon: Package },
     { name: 'Help & Guides', href: '/guides', icon: BookOpen },
     { name: 'My Seller Hub', href: '/vendor/dashboard', icon: Building2 }
