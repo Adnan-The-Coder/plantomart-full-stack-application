@@ -1,6 +1,8 @@
 "use client";
 import {useEffect, useState} from 'react';
 import { ArrowUpRight, Package, Plus, ShoppingBag, TrendingUp } from 'lucide-react';
+import { API_ENDPOINTS } from '@/config/api';
+import { supabase } from '@/utils/supabase/client';
 
 interface OverviewTabProps{
     email: string,
@@ -13,6 +15,45 @@ interface OverviewTabProps{
 function OverviewTab(OverviewTabProps: OverviewTabProps) {
     const { email, totalSales, totalOrders, totalProducts,onViewAllClick } = OverviewTabProps;
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
+      const [vendorData, setVendorData] = useState<any>(null);
+    
+      useEffect(() => {
+        const fetchVendorProfile = async () => {
+          try {
+            // Get the current session from supabase
+            const { data: { session } } = await supabase.auth.getSession();
+    
+            if (!session) {
+              console.log("Auth is not present");
+              return;
+            }
+    
+            // Make the request to fetch vendor profile
+            const vendorRes = await fetch(API_ENDPOINTS.getVendorByUserUUIDAdmin(session.user.id), {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+            });
+    
+            // Check if the response is successful
+            if (!vendorRes.ok) {
+              throw new Error('Failed to fetch vendor profiles');
+            }
+    
+            // Parse the response JSON
+            const vendorData:any = await vendorRes.json();
+            
+            // Handle the vendor data (e.g., set it to state or context)
+            console.log("Vendor data here from overview tab: ",vendorData);
+            setVendorData(vendorData.data);
+    
+          } catch (error) {
+            console.error('Error fetching vendor profile:', error);
+          }
+        };
+    
+        fetchVendorProfile();
+    
+      }, []);
 
     const getStatusColor = (status: string) => {
     switch (status) {
@@ -47,7 +88,7 @@ return (
   <div className="p-4 md:p-6">
     <div className="mb-6">
       <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-      <p className="text-gray-600">Welcome back, {email}</p>
+      Welcome back, {vendorData ? vendorData.contact_person_name : "Loading..."}
     </div>
     {/* Stats Grid */}
     <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

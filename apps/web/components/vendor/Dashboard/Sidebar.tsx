@@ -1,7 +1,7 @@
 /* eslint-disable import/no-unresolved */
 /* eslint-disable no-unused-vars */
 "use client";
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { 
   BarChart3, 
@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'next/navigation';
 
 import { supabase } from '@/utils/supabase/client';
+import { API_ENDPOINTS } from '@/config/api';
 
 interface SidebarProps {
   activeTab: string;
@@ -26,9 +27,49 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-function Sidebar({ activeTab, setActiveTab, vendorData, isMenuOpen, onClose }: SidebarProps) {
+function Sidebar({ activeTab, setActiveTab, isMenuOpen, onClose }: SidebarProps) {
   const router = useRouter();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const [vendorData, setVendorData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchVendorProfile = async () => {
+      try {
+        // Get the current session from supabase
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          console.log("Auth is not present");
+          return;
+        }
+
+        // Make the request to fetch vendor profile
+        const vendorRes = await fetch(API_ENDPOINTS.getVendorByUserUUIDAdmin(session.user.id), {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        // Check if the response is successful
+        if (!vendorRes.ok) {
+          throw new Error('Failed to fetch vendor profiles');
+        }
+
+        // Parse the response JSON
+        const vendorData:any = await vendorRes.json();
+        
+        // Handle the vendor data (e.g., set it to state or context)
+        console.log("Vendor data here: ",vendorData);
+        setVendorData(vendorData.data);
+
+      } catch (error) {
+        console.error('Error fetching vendor profile:', error);
+      }
+    };
+
+    fetchVendorProfile();
+
+  }, []); 
+
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -131,7 +172,7 @@ function Sidebar({ activeTab, setActiveTab, vendorData, isMenuOpen, onClose }: S
             )}
           </div>
           <h2 className="mt-2 max-w-full truncate text-center text-sm font-medium text-gray-900">
-            {vendorData?.vendor_details?.store_name || 'Your Store'}
+            {vendorData?.name || 'Your Store'}
           </h2>
           <p className="max-w-full truncate text-center text-xs text-gray-500">{vendorData?.email}</p>
           <div className="mt-2 flex items-center rounded-full bg-green-100 px-2 py-1">

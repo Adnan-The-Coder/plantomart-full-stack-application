@@ -85,8 +85,6 @@ export default function VendorDashboard() {
           // Handle parsing error silently
         }
       }
-      setVendorData(profileData);
-      
       // Check if user is a vendor by fetching all vendor profiles
       try {
         const vendorRes = await fetch(API_ENDPOINTS.getAllVendorsAdmin, {
@@ -179,8 +177,8 @@ export default function VendorDashboard() {
             // Handle parsing error silently
           }
         }
-        
-        setVendorData(profileData);
+
+      setVendorData(profileData);
         
         // Check if user is a vendor by fetching all vendor profiles
         const vendorRes = await fetch(API_ENDPOINTS.getAllVendorsAdmin, {
