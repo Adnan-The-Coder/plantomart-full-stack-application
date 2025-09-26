@@ -24,7 +24,6 @@
 //     return NextResponse.json(order);
 
 // }
-
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
 
     const razorpay = new Razorpay({
       key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID as string,
-      key_secret: process.env.RAZORPAY_LIVE_KEY_SECRET,
+      key_secret: process.env.RAZORPAY_LIVE_KEY_SECRET as string,
     });
 
     const body = await req.json() as { amount: number };
@@ -50,7 +49,10 @@ export async function POST(req: Request) {
 
     console.log("Order created:", order);
 
-    return NextResponse.json(order);
+    return NextResponse.json({
+      ...order,
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Include key in response
+    });
 
   } catch (error: any) {
     console.error("Error creating order:", error?.message || error);
@@ -60,3 +62,4 @@ export async function POST(req: Request) {
     );
   }
 }
+
