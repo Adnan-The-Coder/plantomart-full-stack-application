@@ -214,7 +214,7 @@ const BuyBox: React.FC<BuyBoxProps> = ({
       // Verify Razorpay key is available
       // const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_LIVE_KEY_ID
       const razorpayKey = orderData.key;
-      console.log("Razorpay key is: ", razorpayKey);
+      // console.log("Razorpay key is: ", razorpayKey);
       if (!razorpayKey) {
         throw new Error('Payment configuration error')
       }
