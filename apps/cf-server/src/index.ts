@@ -53,6 +53,8 @@ app.use('*', cors({
       "https://web.plantomart.workers.dev",
       "https://plantomart.com",
       "https://admin.plantomart.com",
+      "https://www.plantomart.com",
+      "https://wwww.admin.plantomart.com",
     ];
     return !origin || allowedOrigins.includes(origin) ? (origin || "*") : "";
   },
