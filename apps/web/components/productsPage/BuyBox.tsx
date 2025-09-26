@@ -1,5 +1,5 @@
 import React from 'react'
-import { MinusCircle, PlusCircle, Heart, ShieldCheck, Truck, MapPin, Store, Leaf, Award } from 'lucide-react'
+import { MinusCircle, PlusCircle, Heart, ShieldCheck, Truck, MapPin, Store, Leaf, Award, Check, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import ProductDataType from '@/types/ProductData'
 import { useState } from 'react'
@@ -19,12 +19,15 @@ type BuyBoxProps = {
   quantity: number
   onQuantityChange: (increment: boolean) => void
   onAddToCart: () => void
-  // onBuyNow: () => void
   onAddToWishlist: () => void
   inputId?: string
   deliveryDate?: string
   sellerName?: string
   pricePerUnit?: number;
+  isInCart?: boolean;
+  isInWishlist?: boolean;
+  loadingCart?: boolean;
+  loadingWishlist?: boolean;
 }
 
 // Utility for Indian currency formatting
@@ -42,6 +45,10 @@ const BuyBox: React.FC<BuyBoxProps> = ({
   inputId = 'quantity-input',
   deliveryDate = 'Tuesday, 27 May',
   sellerName = 'PlantoMart',
+  isInCart = false,
+  isInWishlist = false,
+  loadingCart = false,
+  loadingWishlist = false,
 }) => {
   const { price, discountPrice, discountPercent, quantity: stockQty, brand } = product
 
@@ -276,12 +283,26 @@ const BuyBox: React.FC<BuyBoxProps> = ({
               type="button"
               onClick={onAddToCart}
               disabled={stockQty <= 0}
-              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 py-4 text-lg font-semibold text-gray-900 shadow-lg transition-all duration-300 hover:from-yellow-500 hover:to-yellow-600 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-lg"
+              className={`group relative w-full overflow-hidden rounded-xl py-4 text-lg font-semibold shadow-lg transition-all duration-300 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-lg ${isInCart ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 hover:from-yellow-500 hover:to-yellow-600'}`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:animate-pulse group-hover:opacity-20" />
               <span className="relative flex items-center justify-center space-x-2">
-                <span className="text-xl">🛒</span>
-                <span>Add to Cart</span>
+                {loadingCart ? (
+                  <>
+                    <Loader2 className="mr-2 size-5 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : isInCart ? (
+                  <>
+                    <Check className="mr-2 size-5" />
+                    <span>Added to Cart</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xl">🛒</span>
+                    <span>Add to Cart</span>
+                  </>
+                )}
               </span>
             </button>
 
@@ -303,10 +324,19 @@ const BuyBox: React.FC<BuyBoxProps> = ({
             <button
               type="button"
               onClick={onAddToWishlist}
-              className="group flex w-full items-center justify-center space-x-2 rounded-xl border-2 border-gray-200 bg-white py-4 text-base font-medium text-gray-700 transition-all duration-300 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+              className={`group flex w-full items-center justify-center space-x-2 rounded-xl border-2 py-4 text-base font-medium transition-all duration-300 ${isInWishlist ? 'border-pink-300 bg-pink-50 text-pink-700' : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700'}`}
             >
-              <Heart className="h-5 w-5 transition-colors group-hover:text-pink-500" />
-              <span>Add to Wishlist</span>
+              {loadingWishlist ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <Heart className={`h-5 w-5 transition-colors ${isInWishlist ? 'fill-pink-500 text-pink-500' : 'group-hover:text-pink-500'}`} />
+                  <span>{isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}</span>
+                </>
+              )}
             </button>
           </div>
 

@@ -4,15 +4,19 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Star, X, Search, ShieldCheck, Heart, MinusCircle, PlusCircle } from 'lucide-react';
+import { Star, X, Search, ShieldCheck, Heart, MinusCircle, PlusCircle, Check, Loader2 } from 'lucide-react';
+import { toast, Toaster } from 'react-hot-toast';
 
 import { supabase } from '@/utils/supabase/client';
-// import  {ProductDataType,ProductVariantType } from '@/types/ProductData';
 import ProductDataType from '@/types/ProductData';
 import { ProductVariantType } from '@/types/ProductData';
 import { API_ENDPOINTS } from '@/config/api';
 import BuyBox from './BuyBox';
 import Script from 'next/script';
+import { updateCartQuantity, removeFromCart, addWishlistItemToCart, removeFromWishlist, addToWishlist, safeLocalStorage } from '@/helpers/cart-and-wishlist/CRUD-Wishlist-and-Cart';
+import { CartItem as CartItemType, WishlistItem as WishlistItemType } from '@/types/Cart';
+import loadCartAndWishlist from '@/helpers/cart-and-wishlist/loadCartAndWishlist'
+import { getEstimatedDeliveryDate } from '@/utils/shippingDate';
 
 interface HeroSectionProps {
   slug: string; // Changed from productId to slug since we'll use slug for routing
@@ -30,6 +34,32 @@ interface VendorData {
   status: string;
 }
 
+// Define a Product type that's compatible with both Cart and Wishlist items
+type Product = {
+  product_id: string;
+  title: string;
+  price: number;
+  discountPrice?: number;
+  discountPercent?: number;
+  image_gallery: string[];
+  slug: string;
+  brand: string;
+  id?: string;
+};
+
+// Type guards to check if items have required fields
+const isValidCartItem = (item: any): item is CartItemType => {
+  return item && typeof item.product_id === 'string' && typeof item.title === 'string';
+};
+
+const isValidWishlistItem = (item: any): item is WishlistItemType => {
+  return item && typeof item.product_id === 'string' && typeof item.title === 'string';
+};
+
+// Use CartItemType and WishlistItemType directly from imports
+type CartItem = CartItemType;
+type WishlistItem = WishlistItemType;
+
 const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
   const [product, setProduct] = useState<ProductDataType | null>(null);
   const [baseTitle, setBaseTitle] = useState<string>('');
@@ -44,9 +74,43 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
   const [vendorData, setVendorData] = useState<VendorData | null>(null);
   const [vendorLoading, setVendorLoading] = useState(false);
   const [vendorError, setVendorError] = useState<string | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+  const [loadingCart, setLoadingCart] = useState<string | null>(null);
+  const [loadingWishlist, setLoadingWishlist] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
   const element_unique_id = useId();
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Helper functions to ensure type compatibility
+  const productToCartItem = (product: ProductDataType): CartItemType => {
+    return {
+      id: product.product_id,
+      product_id: product.product_id,
+      title: product.title,
+      price: product.price,
+      discountPrice: product.discountPrice,
+      image_gallery: normalizeGallery(product.image_gallery),
+      slug: product.slug,
+      brand: product.brand,
+      quantity: 1
+    } as CartItemType;
+  };
+
+  const productToWishlistItem = (product: ProductDataType): WishlistItemType => {
+    return {
+      id: product.product_id,
+      product_id: product.product_id,
+      title: product.title,
+      price: product.price,
+      discountPrice: product.discountPrice,
+      image_gallery: normalizeGallery(product.image_gallery),
+      slug: product.slug,
+      brand: product.brand
+    } as WishlistItemType;
+  };
+
 
   // Add this helper above the currentImageGallery definition
   const normalizeGallery = (gallery: any): string[] => {
@@ -196,12 +260,43 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
     }
   };
 
+  // Initialize cart and wishlist data on mount
+  useEffect(() => {
+    setIsClient(true);
+    
+    // Cart initialization with type validation
+    try {
+      const { cartItems: storedCart, wishlistItems: storedWishlist } = loadCartAndWishlist();
+      setCartItems(storedCart.filter(isValidCartItem));
+      setWishlistItems(storedWishlist.filter(isValidWishlistItem));
+    } catch (error) {
+      console.error('Error loading cart/wishlist:', error);
+    }
+  }, []);
+
+  // Fetch product data when slug changes
   useEffect(() => {
     if (slug) {
       fetchProductBySlug();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+  
+  // Dispatch cart update events
+  useEffect(() => {
+    if (isClient && cartItems.length >= 0) {
+      const event = new CustomEvent('cartUpdated', { detail: cartItems });
+      window.dispatchEvent(event);
+    }
+  }, [cartItems, isClient]);
+
+  // Dispatch wishlist update events
+  useEffect(() => {
+    if (isClient && wishlistItems.length >= 0) {
+      const event = new CustomEvent('wishlistUpdated', { detail: wishlistItems });
+      window.dispatchEvent(event);
+    }
+  }, [wishlistItems, isClient]);
 
   // When selectedVariant changes, reset selectedImage
   useEffect(() => {
@@ -287,103 +382,74 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
     setShowMagnifier(false);
   };
 
-  const handleAddToCart = () => {
-    if (!product) return;
-    
-    // Implement your cart logic here
-    console.log("Added to cart:", {
-      product: product.product_id,
-      variant: selectedVariant,
-      quantity
-    });
+  const isInCart = (productId: string): boolean => {
+    return cartItems.some(item => item.product_id === productId);
   };
 
-  const handlePayment = async (amount: number, productName: string) => {
-    if (amount <= 0) return;
+  const isInWishlist = (productId: string): boolean => {
+    return wishlistItems.some(item => item.product_id === productId);
+  };
 
-    setIsProcessing(true);
-
-    try {
-      // Create order directly
-      const res = await fetch('/api/razorpay/createOrder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ amount: amount * 100 }),
-      });
-      
-      const data:any = await res.json();
-      
-      // Setup Razorpay payment
-      const PaymentData = {
-        key: process.env.RAZORPAY_LIVE_KEY_ID,
-        amount: amount * 100,
-        currency: "INR",
-        name: "payNex",
-        description: "Payment testing or support",
-        order_id: data.id,
-        
-        handler: async function (response: any) {
-          // Verify payment
-          const res = await fetch("/api/razorpay/verifyOrder", {
-            method: "POST",
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              orderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }),
-          });
-          
-          const data:any = await res.json();
-          
-          if (data.isOk) {
-            // Payment successful - 
-            alert("Payment successful!");
-          } else {
-            alert("Payment failed");
-          }
-        },
-        prefill: {
-          name: "payNex",
-        },
-        theme: {
-          color: "#6366f1",
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessing(false);
-          }
-        }
-      };
-
-      // Check if Razorpay is loaded
-      if (typeof window !== 'undefined' && (window as any).Razorpay) {
-        const payment = new (window as any).Razorpay(PaymentData);
-        payment.open();
-      } else {
-        throw new Error('Razorpay SDK not loaded');
-      }
-      
-      // Reset processing state after Razorpay modal opens
-      setIsProcessing(false);
-        
-    } catch (error) {
-        console.error("Payment error:", error);
-        alert("There was an error processing your payment. Please try again.");
-        setIsProcessing(false);
-    }
+  const toggleCart = (product: ProductDataType) => {
+    if (!product) return;
     
+    setLoadingCart(product.product_id);
+    setTimeout(() => {
+      setCartItems(prevItems => {
+        const existingItemIndex = prevItems.findIndex(item => item.product_id === product.product_id);
+        
+        if (existingItemIndex >= 0) {
+          // Remove from cart using helper function
+          const newItems = removeFromCart(prevItems, product.product_id);
+          setTimeout(() => toast.success(`${product.title} removed from cart`), 0);
+          return newItems;
+        } else {
+          // Add to cart - convert Product to CartItem first
+          const cartItem = productToCartItem(product);
+          // Update quantity if specified
+          cartItem.quantity = quantity;
+          const newItems = addWishlistItemToCart(prevItems, cartItem);
+          setTimeout(() => toast.success(`${product.title} added to cart`), 0);
+          return newItems;
+        }
+      });
+      setLoadingCart(null);
+    }, 600);
+  };
+
+  const toggleWishlist = (product: ProductDataType) => {
+    if (!product) return;
+    
+    setLoadingWishlist(product.product_id);
+    setTimeout(() => {
+      setWishlistItems(prevItems => {
+        const existingItemIndex = prevItems.findIndex(item => item.product_id === product.product_id);
+        
+        if (existingItemIndex >= 0) {
+          // Remove from wishlist using helper function
+          const newItems = removeFromWishlist(prevItems, product.product_id);
+          setTimeout(() => toast.success(`${product.title} removed from wishlist`), 0);
+          return newItems;
+        } else {
+          // Add to wishlist - convert Product to WishlistItem first
+          const wishlistItem = productToWishlistItem(product);
+          const newItems = addToWishlist(prevItems, wishlistItem);
+          setTimeout(() => toast.success(`${product.title} added to wishlist`), 0);
+          return newItems;
+        }
+      });
+      setLoadingWishlist(null);
+    }, 400);
+  };
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    toggleCart(displayProduct);
   };
 
   const handleAddToWishlist = () => {
     if (!product) return;
-    
-    // Implement your wishlist logic here
-    console.log("Added to wishlist:", product.product_id);
+    toggleWishlist(displayProduct);
   };
 
   const formatIndianPrice = (price: number) => {
@@ -432,6 +498,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
         id="razorpay-checkout-js"
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
+      />
+      <Toaster 
+        position="bottom-center"
+        toastOptions={{
+          duration: 2000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#FFFFFF',
+            },
+          }
+        }}
       />
     <section className="bg-white text-gray-800">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -551,7 +633,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
                       onClick={() => handleVariantSelect(variant.variant_id)}
                       className={`flex flex-col rounded-md border p-2 text-left transition ${
                         selectedVariant === variant.variant_id 
-                          ? 'border-green-600 bg-green-50 ring-1 ring-green-600' 
+                          ? 'border-green-600 bg-green-500 ring-1 ring-green-600' 
                           : 'border-gray-200 bg-white hover:border-green-600'
                       }`}
                     >
@@ -594,10 +676,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({ slug }) => {
             vendorData={vendorData || undefined}
             quantity={quantity}
             onQuantityChange={handleQuantityChange}
-            onAddToCart={handleAddToCart}
-            onAddToWishlist={handleAddToWishlist}
+            onAddToCart={() => toggleCart(product)}
+            onAddToWishlist={() => toggleWishlist(product)}
+            isInCart={isInCart(product.product_id)}
+            isInWishlist={isInWishlist(product.product_id)}
+            loadingCart={loadingCart === product.product_id}
+            loadingWishlist={loadingWishlist === product.product_id}
             inputId={`quantity-input-${element_unique_id}`}
-            deliveryDate="Tuesday, 27 May"
+            deliveryDate={getEstimatedDeliveryDate(2)} 
             sellerName={vendorData?.name || vendorData?.business_name || 'PlantoMart'}
             pricePerUnit={Math.round(getDisplayPrice(displayProduct))}
             // onBuyNow={() => handlePayment(Math.round(getDisplayPrice(displayProduct)), displayProduct.title)}

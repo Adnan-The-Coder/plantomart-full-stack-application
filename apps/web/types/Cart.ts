@@ -3,7 +3,7 @@ export type CartItem = {
   id: string;
   product_id?: string; // For Featured.tsx
   name?: string; // For original type
-  title: string; // For Featured.tsx
+  title?: string; // For Featured.tsx
   quantity: number;
   price?: number | string;
   numericPrice?: number; // For Navbar.tsx
