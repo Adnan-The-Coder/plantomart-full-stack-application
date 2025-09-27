@@ -26,7 +26,7 @@ export const mail_server_1 = async (c: Context) => {
     }
 
     const SENDER = {
-    email: 'hello@electroplix.com',
+    email: 'hello@plantomart.com',
     name: mail_name
     }
     const response = await fetch('https://send.api.mailtrap.io/api/send', {
