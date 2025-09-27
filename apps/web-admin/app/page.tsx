@@ -47,7 +47,7 @@ const AdminDashboard = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const correctPassword = ">5234"; 
+  const correctPassword = ">adm!n<"; 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === correctPassword) {
