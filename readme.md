@@ -1,23 +1,15 @@
 <div style="display: flex; justify-content: space-between; align-items: center;">
   <h2>PlantoMart Main Codebase</h2>
-  <!-- <img alt="Status" src="https://img.shields.io/badge/status-production-brightgreen" /> -->
-  <img alt="Status" src="https://img.shields.io/badge/status-under--development-orange" />
+  <img alt="Status" src="https://img.shields.io/badge/status-production-brightgreen" />
+  <img alt="Status" src="https://img.shields.io/badge/bug%20fixes-required-orange" />
+  <img alt="Status" src="https://img.shields.io/badge/security%20improvements-needed-red" />
+  <img alt="Status" src="https://img.shields.io/badge/maintenance-off-red" />
+  <!-- <img alt="Status" src="https://img.shields.io/badge/status-under--development-orange" /> -->
   <!-- <img alt="Status" src="https://img.shields.io/badge/status-production--in--progress-yellow" /> -->
   <!-- <img alt="Status" src="https://img.shields.io/badge/status-beta-blue" /> -->
 </div>
 
 <div style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: flex-start;">
-  <div style="flex: 1; min-width: 250px;">
-    <h3>Table of Contents</h3>
-    <ul>
-      <li><a href="#about">About</a></li>
-      <li><a href="#key-features-of-plantomart">Key Features</a></li>
-      <li><a href="#getting-started">Getting Started</a></li>
-      <li><a href="#working-guidelines">Working Guidelines</a></li>
-      <li><a href="#benefits-of-this-platform">Benefits</a></li>
-      <li><a href="#use-cases">Use Cases</a></li>
-    </ul>
-  </div>
 
 Planto-Mart is a robust, full-stack eCommerce platform built for multi-vendor operations. It allows multiple vendors to create and manage their own online stores within a unified marketplace. Customers can browse products from various vendors, make purchases across different shops, and have a seamless experience on a single platform.
 
@@ -28,23 +20,33 @@ The platform is built with scalability, security, and ease of use in mind, enabl
     <p>
       <img alt="TypeScript" src="https://img.shields.io/badge/-TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white" />
       <img alt="NextJS" src="https://img.shields.io/badge/-NextJS-000000?style=flat-square&logo=nextdotjs&logoColor=white" />
+      <img alt="React" src="https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black" />
+      <img alt="HonoJS" src="https://img.shields.io/badge/HonoJS-FF0000?style=flat-square&logo=Hono&logoColor=white&color=FF0000&background=white" />
       <img alt="pnpm" src="https://img.shields.io/badge/pnpm-F69220?style=flat-square&logo=pnpm&logoColor=white" />
-      <img alt="TailwindCSS" src="https://img.shields.io/badge/-Tailwind CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" />
-      <img alt="Cloudflare" src="https://img.shields.io/badge/Cloudflare-F38020?style=flat&logo=Cloudflare&logoColor=white" />
+      <img alt="TailwindCSS" src="https://img.shields.io/badge/-Tailwind%20CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" />
       <img alt="git" src="https://img.shields.io/badge/-Git-F05032?style=flat-square&logo=git&logoColor=white" />
+      <img alt="Cloudflare Wrangler" src="https://img.shields.io/badge/Cloudflare_Wrangler-FF9F00?style=flat-square&logo=cloudflare&logoColor=white&color=FF9F00&background=white" />
       <img alt="D1" src="https://img.shields.io/badge/Cloudflare%20D1-4B8B3C?style=flat-square&logo=cloudflare&logoColor=white" />
       <img alt="Drizzle" src="https://img.shields.io/badge/Drizzle-F27A4B?style=flat-square&logo=drizzle&logoColor=white" />
       <img alt="Nx" src="https://img.shields.io/badge/Nx-000000?style=flat-square&logo=nx&logoColor=white" />
+      <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare%20Workers-FFBC00?style=flat-square&logo=cloudflare&logoColor=white" />
       <img alt="GitHub Actions" src="https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=github-actions&logoColor=white" />
       <img alt="Razorpay" src="https://img.shields.io/badge/Razorpay-02042B?style=flat-square&logo=razorpay&logoColor=white" />
-      <img alt="Google OAuth" src="https://img.shields.io/badge/Google%20OAuth-via%20GCP-4285F4?style=flat-square&logo=google&logoColor=white" />
+      <img alt="Google OAuth via GCP" src="https://img.shields.io/badge/Google%20OAuth-via%20GCP-4285F4?style=flat-square&logo=google&logoColor=white" />
       <img alt="Supabase Auth" src="https://img.shields.io/badge/Supabase-Auth-3FCF8E?style=flat-square&logo=supabase&logoColor=white" />
+      <img alt="BiomeJS" src="https://img.shields.io/badge/BiomeJS-FF6A00?style=flat-square&logo=biome&logoColor=white" />
+      <img alt="Web Storage" src="https://img.shields.io/badge/Web%20Storage-009688?style=flat-square&logo=web&logoColor=white" />
+      <img alt="Open Next Adapter" src="https://img.shields.io/badge/Open%20Next%20Adapter-000000?style=flat-square&logo=nextdotjs&logoColor=white" />
+      <img alt="Node.js" src="https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=node.js&logoColor=white" />
+      <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black" />
+      <img alt="IP Tracking (ipify)" src="https://img.shields.io/badge/IP%20Tracking-ipify-00A0D1?style=flat-square&logo=cloudflare&logoColor=white" />
+      <img alt="SQL" src="https://img.shields.io/badge/SQL-003B57?style=flat-square&logo=postgresql&logoColor=white" />
     </p>
 
   </div>
 </div>
 
-## Built and Maintained by **[Adnan](https://Github.com/Adnan-The-Coder)**
+## Built by **[Adnan](https://Github.com/Adnan-The-Coder)**
 
 <br>
 
